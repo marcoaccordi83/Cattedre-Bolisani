@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Cattedre 2026/27 – I.I.S.S. Bolisani</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; }
+    input, select, button, textarea { font-family: inherit; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:'Segoe UI',Arial;color:#1B3A6B;flex-direction:column;gap:16px">
+      <div style="font-size:32px">📚</div>
+      <div style="font-size:18px;font-weight:700">Gestione Cattedre 2026/27</div>
+      <div style="font-size:13px;color:#9CA3AF">Caricamento in corso…</div>
+    </div>
+  </div>
+  <script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useCallback } = React;
+
+const CC = {
+  A012:"Italiano e Storia", A017:"Economia Politica", A020:"Fisica",
+  A021:"Geografia", A041:"Informatica", A045:"Economia Aziendale",
+  A046:"Diritto / Ec.Pol. / Rel.Int.", A047:"Matematica",
+  A048:"Scienze Motorie", A050:"Scienze / Chimica", A054:"Storia dell'Arte",
+  A066:"Trattamento Testi", A346:"Inglese", AB24:"Tedesco", AC24:"Spagnolo",
+  C030:"Informatica (Compresenza)", RLSS:"Sc. Motorie Villa", IRC:"Religione",
+};
+const CLASSI = {
+  ISOLA_DIURNO:["1A","1B","1C","1D SPO","1E SPO","1F SPO","2A","2B","2C SPO","2D SPO","2E SPO","3A TUR","3B RIM","3C SIA","3D RIM","3E SPO","3F SPO","4A TUR","4B SPO","4C SIA","4D SPO","5A TUR","5B RIM","5C SIA","5D SPO","5E SPO"],
+  ISOLA_SERALE:["3-4 S","5 S"],
+  VILLA_DIURNO:["1A BC","1B BC","1C BC","1D BC","1E BC","1F T","1ML","2A BC","2B BC","2C BC","2D BC","2E T","2F T","3A RIM","3B SIA","3C AFM","3D RIM","3E TUR","4A RIM","4B SIA","4C AFM","4D RIM","4E TUR","5A RIM","5B SIA","5C AFM","5D AFM","5E TUR"],
+  VILLA_SERALE:["1-2 SV","3-4 SV","5SV"],
+  CARCERARIA:["I Anno","II Anno","III Anno","IV Anno","V Anno"],
+};
+const SEDE_LABEL = {
+  ISOLA_DIURNO:"Isola – Diurno", ISOLA_SERALE:"Isola – Serale",
+  VILLA_DIURNO:"Villafranca – Diurno", VILLA_SERALE:"Villafranca – Serale",
+  CARCERARIA:"Sezione Carceraria",
+};
+
+const ORE = {
+  A045:{
+    ISOLA_DIURNO:{"1A":2,"1B":2,"1C":2,"1D SPO":2,"1E SPO":2,"1F SPO":2,"2A":2,"2B":2,"2C SPO":2,"2D SPO":2,"2E SPO":2,"3A TUR":4,"3B RIM":5,"3C SIA":4,"3D RIM":5,"3E SPO":5,"3F SPO":5,"4A TUR":4,"4B SPO":7,"4C SIA":7,"4D SPO":7,"5A TUR":4,"5B RIM":6,"5C SIA":7,"5D SPO":7,"5E SPO":7},
+    VILLA_DIURNO:{"1A BC":2,"1B BC":2,"1C BC":2,"1D BC":2,"1E BC":2,"1F T":2,"2A BC":2,"2B BC":2,"2C BC":2,"2D BC":2,"2E T":2,"2F T":2,"3A RIM":5,"3B SIA":4,"3C AFM":6,"3D RIM":5,"3E TUR":4,"4A RIM":5,"4B SIA":7,"4C AFM":7,"4D RIM":5,"4E TUR":4,"5A RIM":6,"5B SIA":7,"5C AFM":8,"5D AFM":8,"5E TUR":4},
+    ISOLA_SERALE:{"3-4 S":5,"5 S":6}, VILLA_SERALE:{"1-2 SV":2,"3-4 SV":5,"5SV":6},
+  },
+  A046:{
+    ISOLA_DIURNO:{"1A":2,"1B":2,"1C":2,"1D SPO":2,"1E SPO":2,"1F SPO":2,"2A":2,"2B":2,"2C SPO":2,"2D SPO":2,"2E SPO":2,"3A TUR":3,"3B RIM":4,"3C SIA":6,"3D RIM":4,"3E SPO":5,"3F SPO":5,"4A TUR":3,"4B SPO":4,"4C SIA":5,"4D SPO":4,"5A TUR":3,"5B RIM":5,"5C SIA":5,"5D SPO":6,"5E SPO":6},
+    VILLA_DIURNO:{"1A BC":2,"1B BC":2,"1C BC":2,"1D BC":2,"1E BC":2,"1F T":2,"2A BC":2,"2B BC":2,"2C BC":2,"2D BC":2,"2E T":2,"2F T":2,"3A RIM":4,"3B SIA":6,"3C AFM":6,"3D RIM":4,"3E TUR":3,"4A RIM":4,"4B SIA":5,"4C AFM":5,"4D RIM":4,"4E TUR":3,"5A RIM":5,"5B SIA":5,"5C AFM":6,"5D AFM":6,"5E TUR":3},
+    ISOLA_SERALE:{"3-4 S":4,"5 S":4}, VILLA_SERALE:{"1-2 SV":2,"3-4 SV":4,"5SV":4},
+  },
+  A017:{ISOLA_DIURNO:{"3A TUR":2,"4A TUR":2,"5A TUR":2}},
+  A048:{
+    ISOLA_DIURNO:{"1A":2,"1B":2,"1C":2,"1D SPO":4,"1E SPO":4,"1F SPO":4,"2A":2,"2B":2,"2C SPO":4,"2D SPO":4,"2E SPO":4,"3A TUR":2,"3B RIM":2,"3C SIA":2,"3D RIM":2,"3E SPO":4,"3F SPO":4,"4A TUR":2,"4B SPO":4,"4C SIA":2,"4D SPO":4,"5A TUR":2,"5B RIM":2,"5D SPO":3,"5E SPO":3},
+    VILLA_DIURNO:{"1A BC":2,"1B BC":2,"1C BC":2,"1D BC":2,"1E BC":2,"1F T":2,"1ML":2,"2A BC":2,"2B BC":2,"2C BC":2,"2D BC":2,"2E T":2,"2F T":2,"3A RIM":2,"3B SIA":2,"3C AFM":2,"3D RIM":2,"3E TUR":2,"4A RIM":2,"4B SIA":2,"4C AFM":2,"4E TUR":2,"5A RIM":2,"5B SIA":2,"5D AFM":2,"5E TUR":2},
+  },
+  A020:{ISOLA_DIURNO:{"1A":2,"1B":2,"1C":2,"1D SPO":2,"1E SPO":2,"1F SPO":2},VILLA_DIURNO:{"1A BC":2,"1B BC":2,"1C BC":2,"1D BC":2,"1E BC":2,"1F T":2}},
+  A021:{
+    ISOLA_DIURNO:{"1A":3,"1B":3,"1C":3,"1D SPO":2,"1E SPO":2,"1F SPO":2,"2A":3,"2B":3,"2C SPO":3,"2D SPO":3,"2E SPO":3,"3A TUR":2,"4A TUR":2,"5A TUR":2},
+    VILLA_DIURNO:{"1A BC":3,"1B BC":3,"1C BC":3,"1D BC":3,"1E BC":3,"1F T":3,"2A BC":3,"2B BC":3,"2C BC":3,"2D BC":3,"2E T":3,"2F T":3,"4E TUR":2,"5E TUR":2},
+    VILLA_SERALE:{"1-2 SV":2},
+  },
+  A041:{
+    ISOLA_DIURNO:{"3C SIA":4,"3D RIM":2,"3E SPO":2,"3F SPO":2,"4B SPO":2,"4C SIA":5,"4D SPO":2,"5C SIA":5},
+    VILLA_DIURNO:{"3A RIM":2,"3B SIA":4,"3C AFM":2,"3D RIM":2,"4A RIM":2,"4B SIA":5,"4C AFM":2,"4D RIM":2,"5B SIA":5},
+    ISOLA_SERALE:{"3-4 S":1}, VILLA_SERALE:{"3-4 SV":3},
+  },
+  A047:{
+    ISOLA_DIURNO:{"1A":4,"1B":4,"1C":4,"1D SPO":4,"1E SPO":4,"1F SPO":4,"2A":4,"2B":4,"2C SPO":4,"2D SPO":4,"2E SPO":4,"3A TUR":3,"3B RIM":3,"3C SIA":3,"3D RIM":3,"3E SPO":3,"3F SPO":3,"4A TUR":3,"4B SPO":3,"4C SIA":3,"4D SPO":3,"5A TUR":3,"5B RIM":3,"5C SIA":3,"5D SPO":3,"5E SPO":3},
+    VILLA_DIURNO:{"1A BC":4,"1B BC":4,"1C BC":4,"1D BC":4,"1E BC":4,"1F T":4,"1ML":3,"2A BC":4,"2B BC":4,"2C BC":4,"2D BC":4,"2E T":4,"2F T":4,"3A RIM":3,"3B SIA":3,"3C AFM":3,"3D RIM":3,"3E TUR":3,"4A RIM":3,"4B SIA":3,"4C AFM":3,"4D RIM":3,"4E TUR":3,"5A RIM":3,"5B SIA":3,"5D AFM":3,"5E TUR":3},
+    ISOLA_SERALE:{"3-4 S":3,"5 S":3}, VILLA_SERALE:{"1-2 SV":3,"3-4 SV":3,"5SV":3},
+  },
+  A012:{
+    ISOLA_DIURNO:{"1A":6,"1B":6,"1C":6,"1D SPO":6,"1E SPO":6,"1F SPO":6,"2A":6,"2B":6,"2C SPO":5,"2D SPO":5,"2E SPO":5,"3A TUR":6,"3B RIM":6,"3C SIA":6,"3D RIM":6,"3E SPO":6,"3F SPO":6,"4A TUR":6,"4B SPO":5,"4C SIA":6,"4D SPO":5,"5A TUR":6,"5B RIM":6,"5D SPO":6,"5E SPO":6},
+    VILLA_DIURNO:{"1A BC":6,"1B BC":6,"1C BC":6,"1D BC":6,"1E BC":6,"1F T":6,"1ML":7,"2A BC":6,"2B BC":6,"2C BC":6,"2D BC":6,"2E T":6,"2F T":6,"3A RIM":6,"3B SIA":6,"3C AFM":6,"3D RIM":6,"3E TUR":6,"4A RIM":6,"4B SIA":6,"4C AFM":6,"4E TUR":6,"5A RIM":6,"5B SIA":6,"5D AFM":6,"5E TUR":6},
+    ISOLA_SERALE:{"3-4 S":5,"5 S":5}, VILLA_SERALE:{"1-2 SV":5,"3-4 SV":5,"5SV":5},
+  },
+  A050:{
+    ISOLA_DIURNO:{"1A":2,"1B":2,"1C":2,"1D SPO":2,"1E SPO":2,"1F SPO":2,"2A":4,"2B":4,"2C SPO":4,"2D SPO":4,"2E SPO":4},
+    VILLA_DIURNO:{"1A BC":2,"1B BC":2,"1C BC":2,"1D BC":2,"1E BC":2,"1F T":2,"1ML":2,"2A BC":4,"2B BC":4,"2C BC":4,"2D BC":4,"2E T":4,"2F T":4},
+    VILLA_SERALE:{"1-2 SV":2},
+  },
+  A346:{
+    ISOLA_DIURNO:{"1A":3,"1B":3,"1C":3,"1D SPO":3,"1E SPO":3,"1F SPO":3,"2A":3,"2B":3,"2C SPO":2,"2D SPO":2,"2E SPO":2,"3A TUR":3,"3B RIM":3,"3C SIA":3,"3D RIM":3,"3E SPO":3,"3F SPO":3,"4A TUR":3,"4B SPO":3,"4C SIA":3,"4D SPO":3,"5A TUR":3,"5B RIM":3,"5C SIA":3,"5D SPO":3,"5E SPO":3},
+    ISOLA_SERALE:{"3-4 S":3,"5 S":3},
+  },
+  AB24:{
+    VILLA_DIURNO:{"1A BC":3,"1B BC":3,"1C BC":3,"1D BC":3,"1E BC":3,"1F T":3,"1ML":3,"2A BC":3,"2B BC":3,"2C BC":3,"2D BC":3,"2E T":3,"2F T":3,"3A RIM":3,"3B SIA":3,"3C AFM":3,"3D RIM":3,"3E TUR":3,"4A RIM":3,"4B SIA":3,"4C AFM":3,"4E TUR":3,"5A RIM":3,"5B SIA":3,"5C AFM":3,"5D AFM":3,"5E TUR":3},
+    VILLA_SERALE:{"1-2 SV":2,"3-4 SV":3,"5SV":3},
+  },
+  C030:{ISOLA_DIURNO:{"3C SIA":3,"4C SIA":3,"5C SIA":3},VILLA_DIURNO:{"3B SIA":3,"4B SIA":3,"5B SIA":3}},
+  RLSS:{VILLA_DIURNO:{"2A BC":1,"2B BC":1,"2C BC":1,"2D BC":1,"2E T":1,"3A RIM":1,"3B SIA":1,"3C AFM":1,"3D RIM":1,"3E TUR":1,"4A RIM":1,"4B SIA":1,"4C AFM":1,"4E TUR":1,"5A RIM":1,"5B SIA":1,"5D AFM":1,"5E TUR":1}},
+  IRC:{
+    ISOLA_DIURNO:{"1A":1,"1B":1,"1C":1,"1D SPO":1,"1E SPO":1,"1F SPO":1,"2A":1,"2B":1,"2C SPO":1,"2D SPO":1,"2E SPO":1,"3A TUR":1,"3B RIM":1,"3C SIA":1,"3D RIM":1,"3E SPO":1,"3F SPO":1,"4A TUR":1,"4B SPO":1,"4C SIA":1,"4D SPO":1,"5A TUR":1,"5B RIM":1,"5D SPO":1,"5E SPO":1},
+    VILLA_DIURNO:{"1A BC":1,"1B BC":1,"1C BC":1,"1D BC":1,"1E BC":1,"1F T":1,"1ML":1,"2A BC":1,"2B BC":1,"2C BC":1,"2D BC":1,"2E T":1,"2F T":1,"3A RIM":1,"3B SIA":1,"3C AFM":1,"3D RIM":1,"3E TUR":1,"4A RIM":1,"4B SIA":1,"4C AFM":1,"4E TUR":1,"5A RIM":1,"5B SIA":1,"5D AFM":1,"5E TUR":1},
+  },
+  A066:{ISOLA_DIURNO:{"1A":2,"1B":2,"1C":2,"1D SPO":2,"1E SPO":2,"1F SPO":2,"2C SPO":2,"2D SPO":2,"2E SPO":2,"4D SPO":2,"5D SPO":2,"5E SPO":2}},
+  A054:{VILLA_DIURNO:{"3E TUR":2,"4E TUR":2,"5E TUR":2}},
+  AC24:{ISOLA_SERALE:{"3-4 S":2,"5 S":2}, VILLA_SERALE:{"1-2 SV":2,"3-4 SV":2,"5SV":2}},
+};
+
+// ─── SEZIONE CARCERARIA ──────────────────────────────────────────────────────
+const ORE_CARCERARIA = {
+  "I Anno":   {A012:6,A047:4,A048:2,A050:2,A021:2,A046:2,A346:3,IRC:1},
+  "II Anno":  {A012:6,A047:4,A048:2,A050:2,A021:2,A046:2,A346:3,IRC:1},
+  "III Anno": {A012:6,A047:3,A048:2,A045:4,A046:3,A346:3,A041:3,C030:3},
+  "IV Anno":  {A012:6,A047:3,A048:2,A045:5,A046:3,A346:3,A041:3,C030:3},
+  "V Anno":   {A012:6,A047:3,A048:2,A045:6,A046:3,A346:3,A041:3,C030:3},
+};
+
+// ─── GRUPPI LINGUA DEFAULT ───────────────────────────────────────────────────
+const GRUPPI_LINGUA_DEFAULT = [
+  // ISOLA – Tedesco (se presente come 2a lingua)
+  {id:1,sede:"ISOLA",anno:"3",gruppo:"Gruppo Lingue 3° Isola A",disc:"AB24",classiOrigine:["3A TUR","3B RIM"],docente:"",ore:3,note:""},
+  {id:2,sede:"ISOLA",anno:"3",gruppo:"Gruppo Lingue 3° Isola B",disc:"AB24",classiOrigine:["3C SIA","3D RIM"],docente:"",ore:3,note:""},
+  {id:3,sede:"ISOLA",anno:"3",gruppo:"Gruppo Lingue 3° Isola C",disc:"AB24",classiOrigine:["3E SPO","3F SPO"],docente:"",ore:3,note:""},
+  {id:4,sede:"ISOLA",anno:"4",gruppo:"Gruppo Lingue 4° Isola A",disc:"AB24",classiOrigine:["4A TUR","4B SPO"],docente:"",ore:3,note:""},
+  {id:5,sede:"ISOLA",anno:"4",gruppo:"Gruppo Lingue 4° Isola B",disc:"AB24",classiOrigine:["4C SIA","4D SPO"],docente:"",ore:3,note:""},
+  {id:6,sede:"ISOLA",anno:"5",gruppo:"Gruppo Lingue 5° Isola A",disc:"AB24",classiOrigine:["5A TUR","5B RIM"],docente:"",ore:3,note:""},
+  {id:7,sede:"ISOLA",anno:"5",gruppo:"Gruppo Lingue 5° Isola B",disc:"AB24",classiOrigine:["5C SIA","5D SPO","5E SPO"],docente:"",ore:3,note:""},
+  // ISOLA – Spagnolo (AC24) serale
+  {id:8,sede:"ISOLA",anno:"Serale",gruppo:"Spagnolo Serale Isola",disc:"AC24",classiOrigine:["3-4 S","5 S"],docente:"Accogli",ore:2,note:"Serale"},
+  // VILLA – Tedesco (AB24) gruppi Villa
+  {id:9,sede:"VILLA",anno:"1",gruppo:"Tedesco 1° Villa A",disc:"AB24",classiOrigine:["1A BC","1B BC","1C BC"],docente:"",ore:3,note:""},
+  {id:10,sede:"VILLA",anno:"1",gruppo:"Tedesco 1° Villa B",disc:"AB24",classiOrigine:["1D BC","1E BC","1F T","1ML"],docente:"",ore:3,note:""},
+  {id:11,sede:"VILLA",anno:"2",gruppo:"Tedesco 2° Villa A",disc:"AB24",classiOrigine:["2A BC","2B BC","2C BC"],docente:"Cristini / Ceriani",ore:3,note:""},
+  {id:12,sede:"VILLA",anno:"2",gruppo:"Tedesco 2° Villa B",disc:"AB24",classiOrigine:["2D BC","2E T","2F T"],docente:"Guglielmi / Fiocco",ore:3,note:""},
+  {id:13,sede:"VILLA",anno:"3",gruppo:"Tedesco 3° Villa A",disc:"AB24",classiOrigine:["3A RIM","3B SIA"],docente:"",ore:3,note:""},
+  {id:14,sede:"VILLA",anno:"3",gruppo:"Tedesco 3° Villa B",disc:"AB24",classiOrigine:["3C AFM","3D RIM","3E TUR"],docente:"",ore:3,note:""},
+  {id:15,sede:"VILLA",anno:"4",gruppo:"Tedesco 4° Villa A",disc:"AB24",classiOrigine:["4A RIM","4B SIA"],docente:"Cristini / Ceriani",ore:3,note:""},
+  {id:16,sede:"VILLA",anno:"4",gruppo:"Tedesco 4° Villa B",disc:"AB24",classiOrigine:["4C AFM","4E TUR"],docente:"Guglielmi",ore:3,note:""},
+  {id:17,sede:"VILLA",anno:"5",gruppo:"Tedesco 5° Villa A",disc:"AB24",classiOrigine:["5A RIM","5B SIA"],docente:"Cristini / Ballarini",ore:3,note:""},
+  {id:18,sede:"VILLA",anno:"5",gruppo:"Tedesco 5° Villa B",disc:"AB24",classiOrigine:["5C AFM","5D AFM","5E TUR"],docente:"Ballarini / Fiocco",ore:3,note:""},
+  // VILLA – Spagnolo serale
+  {id:19,sede:"VILLA",anno:"Serale",gruppo:"Spagnolo Serale Villa",disc:"AC24",classiOrigine:["1-2 SV","3-4 SV","5SV"],docente:"",ore:2,note:"Serale"},
+];
+
+// ─── DOCENTI BASE ─────────────────────────────────────────────────────────────
+function extractPot(note) {
+  const m = (note||'').match(/(\d+)\s*h?\s*pot/i);
+  return m ? parseInt(m[1]) : 0;
+}
+const DOCENTI_BASE = [
+  {"id":1,"nome":"Da Como Riccardo","disc":"A045","rosso":false,"note":"9 pot – PCTO","ruolo":true,"assegn":[["ISOLA_DIURNO","1A",2,0],["ISOLA_DIURNO","2A",2,0],["ISOLA_DIURNO","3E SPO",5,0]]},
+  {"id":2,"nome":"Lucano Giuseppe","disc":"A045","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","3C SIA",4,0],["ISOLA_DIURNO","4C SIA",7,1],["ISOLA_DIURNO","5C SIA",7,1],["ISOLA_SERALE","3-4 S",5,0],["ISOLA_SERALE","5 S",6,0]]},
+  {"id":3,"nome":"Pellegrini Silvia","disc":"A045","rosso":false,"note":"PT 15","ruolo":true,"assegn":[["ISOLA_DIURNO","2B",2,1],["ISOLA_DIURNO","4D SPO",7,1],["ISOLA_DIURNO","5B RIM",6,1]]},
+  {"id":4,"nome":"Totolo Francesco","disc":"A045","rosso":false,"note":"1 pot","ruolo":true,"assegn":[["ISOLA_DIURNO","3A TUR",4,0],["ISOLA_DIURNO","3F SPO",5,0],["ISOLA_DIURNO","4A TUR",4,1],["ISOLA_DIURNO","5A TUR",4,1]]},
+  {"id":5,"nome":"Cavaliero Patrizia","disc":"A045","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1B",2,0],["ISOLA_DIURNO","1C",2,0],["ISOLA_DIURNO","1D SPO",2,0],["ISOLA_DIURNO","3B RIM",5,0],["ISOLA_DIURNO","5E SPO",7,1]]},
+  {"id":6,"nome":"Cascas Giancarlo","disc":"A046","rosso":false,"note":"3 h a Villa","ruolo":true,"assegn":[["ISOLA_DIURNO","2C SPO",2,1],["ISOLA_DIURNO","2E SPO",2,1],["ISOLA_DIURNO","3C SIA",3,0],["ISOLA_DIURNO","5A TUR",3,1],["ISOLA_DIURNO","5B RIM",5,1]]},
+  {"id":7,"nome":"Ferraù Luisa","disc":"A046","rosso":false,"note":"PT 12","ruolo":true,"assegn":[["ISOLA_DIURNO","3A TUR",3,0],["ISOLA_DIURNO","3D RIM",4,0],["ISOLA_DIURNO","4A TUR",3,1],["ISOLA_DIURNO","4B SPO",2,1],["ISOLA_SERALE","3-4 S",4,0],["ISOLA_SERALE","5 S",4,0]]},
+  {"id":8,"nome":"Laneve Marino","disc":"A046","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2B",2,1],["ISOLA_DIURNO","2D SPO",2,1],["ISOLA_DIURNO","3C SIA",3,0],["ISOLA_DIURNO","4C SIA",5,1],["ISOLA_DIURNO","5D SPO",6,1]]},
+  {"id":9,"nome":"Pasqua Francesca","disc":"A046","rosso":false,"note":"da serale villa","ruolo":true,"assegn":[["ISOLA_DIURNO","3E SPO",5,0],["ISOLA_DIURNO","5C SIA",5,1]]},
+  {"id":10,"nome":"Sellaro Pietro","disc":"A046","rosso":false,"note":"8 h serale isola","ruolo":true,"assegn":[["ISOLA_DIURNO","3B RIM",4,0],["ISOLA_DIURNO","5E SPO",6,1]]},
+  {"id":11,"nome":"Sergi Francesca","disc":"A046","rosso":false,"note":"da serale isola","ruolo":true,"assegn":[["ISOLA_DIURNO","3F SPO",2,0],["ISOLA_DIURNO","4B SPO",2,1],["ISOLA_DIURNO","4D SPO",4,1]]},
+  {"id":12,"nome":"Totolo Francesco","disc":"A046","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1A",2,0],["ISOLA_DIURNO","1B",2,0],["ISOLA_DIURNO","1C",2,0],["ISOLA_DIURNO","1D SPO",2,0],["ISOLA_DIURNO","1E SPO",2,0],["ISOLA_DIURNO","1F SPO",2,0],["ISOLA_DIURNO","2A",2,0],["ISOLA_DIURNO","3F SPO",3,0]]},
+  {"id":13,"nome":"Soardo Eugenio L.","disc":"A017","rosso":false,"note":"12 h pot","ruolo":true,"assegn":[["ISOLA_DIURNO","3A TUR",2,0],["ISOLA_DIURNO","4A TUR",2,1],["ISOLA_DIURNO","5A TUR",2,1]]},
+  {"id":14,"nome":"Bonafini Cecilia","disc":"A048","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2A",2,1],["ISOLA_DIURNO","3E SPO",4,0],["ISOLA_DIURNO","3F SPO",4,0],["ISOLA_DIURNO","4A TUR",2,1],["ISOLA_DIURNO","4D SPO",4,1],["ISOLA_DIURNO","5A TUR",2,1]]},
+  {"id":15,"nome":"Cicco Donato","disc":"A048","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1B",2,0],["ISOLA_DIURNO","1D SPO",4,0],["ISOLA_DIURNO","2D SPO",4,1],["ISOLA_DIURNO","3B RIM",2,0],["ISOLA_DIURNO","4B SPO",4,1],["ISOLA_DIURNO","5E SPO",3,1]]},
+  {"id":16,"nome":"Gasparini Luca","disc":"A048","rosso":false,"note":"16 h Villa","ruolo":true,"assegn":[["ISOLA_DIURNO","5B RIM",2,1]]},
+  {"id":17,"nome":"Mezzetti Filippo","disc":"A048","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1E SPO",4,0],["ISOLA_DIURNO","2B",2,1],["ISOLA_DIURNO","2C SPO",4,1],["ISOLA_DIURNO","2E SPO",4,1],["ISOLA_DIURNO","4C SIA",2,1],["ISOLA_DIURNO","5D SPO",3,1]]},
+  {"id":18,"nome":"Accordi Marco","disc":"A020","rosso":false,"note":"12 h Vicario","ruolo":true,"assegn":[["ISOLA_DIURNO","1A",2,0],["ISOLA_DIURNO","1B",2,0],["ISOLA_DIURNO","1C",2,0],["ISOLA_DIURNO","1D SPO",2,0],["ISOLA_DIURNO","1E SPO",2,0],["ISOLA_DIURNO","1F SPO",2,0]]},
+  {"id":19,"nome":"Modenini Federico","disc":"A021","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1A",3,0],["ISOLA_DIURNO","1B",3,0],["ISOLA_DIURNO","1C",3,0],["ISOLA_DIURNO","2A",3,0],["ISOLA_DIURNO","3A TUR",2,0],["ISOLA_DIURNO","4A TUR",2,1],["ISOLA_DIURNO","5A TUR",2,1]]},
+  {"id":20,"nome":"Scopelliti Giovanna","disc":"A021","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1D SPO",2,0],["ISOLA_DIURNO","1E SPO",2,0],["ISOLA_DIURNO","1F SPO",2,0],["ISOLA_DIURNO","2B",3,0],["ISOLA_DIURNO","2C SPO",3,0],["ISOLA_DIURNO","2D SPO",3,0],["ISOLA_DIURNO","2E SPO",3,0]]},
+  {"id":21,"nome":"Borrata Mario","disc":"A041","rosso":false,"note":"16 h Villa","ruolo":true,"assegn":[["ISOLA_DIURNO","2A",2,1]]},
+  {"id":22,"nome":"Biondo Marianoemi","disc":"A041","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","3C SIA",4,0],["ISOLA_DIURNO","4B SPO",2,1],["ISOLA_DIURNO","4C SIA",5,1],["ISOLA_DIURNO","5B RIM",2,1],["ISOLA_DIURNO","5C SIA",5,1],["ISOLA_SERALE","3-4 S",1,0]]},
+  {"id":23,"nome":"Forcina Federico G.","disc":"A066","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2B",2,0],["ISOLA_DIURNO","3B RIM",2,0],["ISOLA_DIURNO","3D RIM",2,0],["ISOLA_DIURNO","3E SPO",2,0],["ISOLA_DIURNO","3F SPO",2,0],["ISOLA_DIURNO","4D SPO",2,1],["ISOLA_DIURNO","5D SPO",2,1],["ISOLA_DIURNO","5E SPO",2,1]]},
+  {"id":24,"nome":"Careri Giuseppe","disc":"A047","rosso":false,"note":"PT 15, 3 h pot","ruolo":true,"assegn":[["ISOLA_DIURNO","3A TUR",3,0],["ISOLA_DIURNO","3D RIM",3,0],["ISOLA_DIURNO","4A TUR",3,1],["ISOLA_DIURNO","4D SPO",3,1],["ISOLA_DIURNO","5A TUR",3,1]]},
+  {"id":25,"nome":"Deorsi Anna","disc":"A047","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1E SPO",4,0],["ISOLA_DIURNO","1F SPO",4,0],["ISOLA_DIURNO","2E SPO",4,1],["ISOLA_DIURNO","3F SPO",3,0],["ISOLA_DIURNO","5E SPO",3,1]]},
+  {"id":26,"nome":"Foscarin Emilia","disc":"A047","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2A",4,1],["ISOLA_DIURNO","2B",4,1],["ISOLA_DIURNO","2D SPO",4,1],["ISOLA_DIURNO","3B RIM",3,0],["ISOLA_DIURNO","5B RIM",3,1]]},
+  {"id":27,"nome":"Giacomelli Alessandro","disc":"A047","rosso":true,"note":"non confermato","ruolo":false,"assegn":[["ISOLA_SERALE","3-4 S",3,0],["ISOLA_SERALE","5 S",3,0]]},
+  {"id":28,"nome":"Salgarelli Francesca","disc":"A047","rosso":false,"note":"1 h pot","ruolo":true,"assegn":[["ISOLA_DIURNO","1C",4,0],["ISOLA_DIURNO","1D SPO",4,0],["ISOLA_DIURNO","4B SPO",3,1],["ISOLA_DIURNO","4C SIA",3,1],["ISOLA_DIURNO","5D SPO",3,1]]},
+  {"id":29,"nome":"Sandrini Maria Chiara","disc":"A047","rosso":false,"note":"PT 12","ruolo":true,"assegn":[["ISOLA_DIURNO","1A",4,0],["ISOLA_DIURNO","1B",4,0],["ISOLA_DIURNO","2C SPO",4,1]]},
+  {"id":30,"nome":"Varriale Roberto","disc":"A047","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","3C SIA",3,0],["ISOLA_DIURNO","3E SPO",3,0],["ISOLA_DIURNO","5C SIA",3,1]]},
+  {"id":31,"nome":"Beltramini Valeria","disc":"A012","rosso":false,"note":"6 h pot","ruolo":true,"assegn":[["ISOLA_DIURNO","3A TUR",6,0],["ISOLA_DIURNO","4A TUR",6,1]]},
+  {"id":32,"nome":"Bertuzzi Alessandra","disc":"A012","rosso":false,"note":"6 h pot","ruolo":true,"assegn":[["ISOLA_DIURNO","2B",6,1],["ISOLA_DIURNO","3B RIM",6,0]]},
+  {"id":33,"nome":"Castracani Silvia","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1B",6,0],["ISOLA_DIURNO","1E SPO",6,0],["ISOLA_DIURNO","4B SPO",5,1]]},
+  {"id":34,"nome":"Coltro Nicola","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2D SPO",5,1],["ISOLA_DIURNO","3D RIM",6,0],["ISOLA_DIURNO","5D SPO",6,1],["ISOLA_SERALE","3-4 S",5,0],["ISOLA_SERALE","5 S",5,0]]},
+  {"id":35,"nome":"Greco Sarah","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1D SPO",6,0],["ISOLA_DIURNO","4D SPO",5,1],["ISOLA_DIURNO","5E SPO",6,1]]},
+  {"id":36,"nome":"Piccoli Silvia","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2A",6,1],["ISOLA_DIURNO","3F SPO",6,0],["ISOLA_DIURNO","5A TUR",6,1]]},
+  {"id":37,"nome":"Pizzato Silvana","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","3C SIA",6,0],["ISOLA_DIURNO","4C SIA",6,1],["ISOLA_DIURNO","5B RIM",6,1]]},
+  {"id":38,"nome":"Rizzo Stefano A.","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2C SPO",5,1],["ISOLA_DIURNO","2E SPO",5,1],["ISOLA_DIURNO","3E SPO",6,0]]},
+  {"id":39,"nome":"Ambrosi Diego","disc":"A050","rosso":false,"note":"4 h Villa","ruolo":true,"assegn":[["ISOLA_DIURNO","1A",2,0],["ISOLA_DIURNO","1B",2,0],["ISOLA_DIURNO","1C",2,0],["ISOLA_DIURNO","1D SPO",2,0],["ISOLA_DIURNO","1E SPO",2,0],["ISOLA_DIURNO","1F SPO",2,0],["ISOLA_DIURNO","2B",4,1],["VILLA_DIURNO","2F T",4,1]]},
+  {"id":40,"nome":"Foroni Alice","disc":"A050","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2A",4,1],["ISOLA_DIURNO","2C SPO",4,1],["ISOLA_DIURNO","2D SPO",4,1]]},
+  {"id":41,"nome":"Righi Paola","disc":"A050","rosso":false,"note":"12 h Villa","ruolo":true,"assegn":[["ISOLA_DIURNO","2E SPO",4,1],["VILLA_DIURNO","1D BC",2,0],["VILLA_DIURNO","1E BC",2,0],["VILLA_DIURNO","1F T",2,0],["VILLA_DIURNO","2D BC",4,1],["VILLA_DIURNO","2E T",4,1]]},
+  {"id":42,"nome":"Caparra Caterina","disc":"A346","rosso":false,"note":"6 h pot","ruolo":true,"assegn":[["ISOLA_DIURNO","4D SPO",3,1],["ISOLA_DIURNO","5D SPO",3,1],["ISOLA_SERALE","3-4 S",3,0],["ISOLA_SERALE","5 S",3,0]]},
+  {"id":43,"nome":"Secchiati Agnese","disc":"A346","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","4A TUR",3,1],["ISOLA_DIURNO","5A TUR",3,1],["ISOLA_DIURNO","5C SIA",3,1],["ISOLA_DIURNO","5E SPO",3,1]]},
+  {"id":44,"nome":"Bianchera Irene","disc":"A346","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2A",3,1],["ISOLA_DIURNO","4C SIA",3,1]]},
+  {"id":45,"nome":"Girella Francesca","disc":"A346","rosso":false,"note":"PT 15","ruolo":true,"assegn":[["ISOLA_DIURNO","2C SPO",3,1],["ISOLA_DIURNO","2D SPO",3,1]]},
+  {"id":46,"nome":"Di Stefano Gaetano","disc":"A346","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","2B",3,1],["ISOLA_DIURNO","2E SPO",3,1],["ISOLA_DIURNO","4B SPO",3,1],["ISOLA_DIURNO","5B RIM",3,1]]},
+  {"id":47,"nome":"Maioriello (Isola)","disc":"C030","rosso":false,"note":"9 h Villa","ruolo":true,"assegn":[["ISOLA_DIURNO","3C SIA",3,0],["ISOLA_DIURNO","4C SIA",3,1],["ISOLA_DIURNO","5C SIA",3,1]]},
+  {"id":48,"nome":"Burato Massimo","disc":"IRC","rosso":false,"note":"","ruolo":true,"assegn":[["ISOLA_DIURNO","1C",1,0],["ISOLA_DIURNO","2A",1,1],["ISOLA_DIURNO","2B",1,1],["ISOLA_DIURNO","2C SPO",1,1],["ISOLA_DIURNO","2D SPO",1,1],["ISOLA_DIURNO","2E SPO",1,1],["ISOLA_DIURNO","3A TUR",1,0],["ISOLA_DIURNO","3B RIM",1,0],["ISOLA_DIURNO","3C SIA",1,0],["ISOLA_DIURNO","3D RIM",1,0],["ISOLA_DIURNO","4A TUR",1,1],["ISOLA_DIURNO","4B SPO",1,1],["ISOLA_DIURNO","4C SIA",1,1],["ISOLA_DIURNO","4D SPO",1,1],["ISOLA_DIURNO","5A TUR",1,1],["ISOLA_DIURNO","5B RIM",1,1],["ISOLA_DIURNO","5D SPO",1,1],["ISOLA_DIURNO","5E SPO",1,1]]},
+  {"id":49,"nome":"IRC Isola spezzone","disc":"IRC","rosso":false,"note":"1° anno","ruolo":false,"assegn":[["ISOLA_DIURNO","1A",1,0],["ISOLA_DIURNO","1B",1,0],["ISOLA_DIURNO","1D SPO",1,0],["ISOLA_DIURNO","1E SPO",1,0],["ISOLA_DIURNO","1F SPO",1,0],["ISOLA_DIURNO","3E SPO",1,0],["ISOLA_DIURNO","3F SPO",1,0]]},
+  {"id":50,"nome":"Buonincontri Valeria","disc":"A045","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","4C AFM",7,1],["VILLA_DIURNO","4E TUR",4,1],["VILLA_DIURNO","5D AFM",8,1],["VILLA_SERALE","1-2 SV",2,0],["VILLA_SERALE","3-4 SV",5,0],["VILLA_SERALE","5SV",6,0]]},
+  {"id":51,"nome":"Falzoni Giancarlo","disc":"A045","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2A BC",2,1],["VILLA_DIURNO","3A RIM",5,0],["VILLA_DIURNO","4A RIM",5,1],["VILLA_DIURNO","5A RIM",6,1]]},
+  {"id":52,"nome":"Lo Conte Franco","disc":"A045","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1B BC",2,0],["VILLA_DIURNO","2B BC",2,1],["VILLA_DIURNO","2D BC",2,1],["VILLA_DIURNO","2E T",2,1],["VILLA_DIURNO","3E TUR",4,0],["VILLA_DIURNO","5E TUR",4,1]]},
+  {"id":53,"nome":"Lo Dico Maria","disc":"A045","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1A BC",2,0],["VILLA_DIURNO","1C BC",2,0],["VILLA_DIURNO","1D BC",2,0],["VILLA_DIURNO","1E BC",2,0],["VILLA_DIURNO","1F T",2,0],["VILLA_DIURNO","2C BC",2,1],["VILLA_DIURNO","3C AFM",6,0]]},
+  {"id":54,"nome":"Marconi Simonetta","disc":"A045","rosso":false,"note":"11 h serale","ruolo":true,"assegn":[["VILLA_DIURNO","5C AFM",8,1]]},
+  {"id":55,"nome":"Terranova Leonardo","disc":"A045","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","3B SIA",4,0],["VILLA_DIURNO","4B SIA",7,1],["VILLA_DIURNO","5B SIA",7,1]]},
+  {"id":56,"nome":"Maraia Marco","disc":"A045","rosso":false,"note":"2 h serale","ruolo":true,"assegn":[["VILLA_DIURNO","2F T",2,1],["VILLA_DIURNO","3D RIM",5,0],["VILLA_DIURNO","4D RIM",5,1]]},
+  {"id":57,"nome":"Beghini Riccardo","disc":"A046","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2B BC",2,1],["VILLA_DIURNO","4A RIM",4,1],["VILLA_DIURNO","4B SIA",3,1]]},
+  {"id":58,"nome":"Della Vella Pina","disc":"A046","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","5B SIA",5,1],["VILLA_DIURNO","5D AFM",6,1]]},
+  {"id":59,"nome":"Varriale Federica","disc":"A046","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2C BC",2,1],["VILLA_DIURNO","2D BC",2,1],["VILLA_DIURNO","2F T",2,1]]},
+  {"id":60,"nome":"Lima Maria","disc":"A046","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","4D RIM",4,1],["VILLA_DIURNO","5A RIM",5,1],["VILLA_DIURNO","5C AFM",6,1],["VILLA_DIURNO","5E TUR",3,1]]},
+  {"id":61,"nome":"Sbrozzeri Barbara","disc":"A046","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2A BC",2,1],["VILLA_DIURNO","2E T",2,1],["VILLA_DIURNO","4B SIA",2,1],["VILLA_DIURNO","4C AFM",5,1]]},
+  {"id":62,"nome":"Cascas G. (Villa)","disc":"A046","rosso":false,"note":"15 h a Isola","ruolo":true,"assegn":[["VILLA_DIURNO","4E TUR",3,1]]},
+  {"id":63,"nome":"Andreanò Daniela","disc":"A054","rosso":false,"note":"6 h pot COE","ruolo":true,"assegn":[["VILLA_DIURNO","3E TUR",2,0],["VILLA_DIURNO","4E TUR",2,1],["VILLA_DIURNO","5E TUR",2,1]]},
+  {"id":64,"nome":"Baroni Piercesare","disc":"A048","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1B BC",2,0],["VILLA_DIURNO","1C BC",2,0],["VILLA_DIURNO","2B BC",2,1],["VILLA_DIURNO","2C BC",2,1],["VILLA_DIURNO","3B SIA",2,0],["VILLA_DIURNO","3C AFM",2,0],["VILLA_DIURNO","5B SIA",2,1],["VILLA_DIURNO","5D AFM",2,1],["VILLA_DIURNO","5E TUR",2,1]]},
+  {"id":65,"nome":"Gasparini Andrea","disc":"A048","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1A BC",2,0],["VILLA_DIURNO","2A BC",2,1],["VILLA_DIURNO","3A RIM",2,0],["VILLA_DIURNO","3D RIM",2,0],["VILLA_DIURNO","3E TUR",2,0],["VILLA_DIURNO","4A RIM",2,1],["VILLA_DIURNO","4B SIA",2,1],["VILLA_DIURNO","4E TUR",2,1],["VILLA_DIURNO","5A RIM",2,1]]},
+  {"id":66,"nome":"Gasparini Luca","disc":"A048","rosso":false,"note":"2 h Isola","ruolo":true,"assegn":[["ISOLA_DIURNO","5B RIM",2,1],["VILLA_DIURNO","1D BC",2,0],["VILLA_DIURNO","1E BC",2,0],["VILLA_DIURNO","1F T",2,0],["VILLA_DIURNO","2D BC",2,1],["VILLA_DIURNO","2E T",2,1],["VILLA_DIURNO","2F T",2,1],["VILLA_DIURNO","4C AFM",2,1]]},
+  {"id":67,"nome":"Squartini Giulia","disc":"A020","rosso":false,"note":"6 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","1A BC",2,0],["VILLA_DIURNO","1B BC",2,0],["VILLA_DIURNO","1C BC",2,0],["VILLA_DIURNO","1D BC",2,0],["VILLA_DIURNO","1E BC",2,0],["VILLA_DIURNO","1F T",2,0]]},
+  {"id":68,"nome":"Carrà Giuseppa","disc":"A021","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1A BC",3,0],["VILLA_DIURNO","1B BC",3,0],["VILLA_DIURNO","2A BC",3,1],["VILLA_DIURNO","2B BC",3,1],["VILLA_DIURNO","2C BC",3,1],["VILLA_SERALE","1-2 SV",2,0]]},
+  {"id":69,"nome":"Orando Anna","disc":"A021","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1D BC",3,0],["VILLA_DIURNO","2D BC",3,1],["VILLA_DIURNO","2E T",3,1],["VILLA_DIURNO","2F T",3,1],["VILLA_DIURNO","3E TUR",2,0],["VILLA_DIURNO","4E TUR",2,1],["VILLA_DIURNO","5E TUR",2,1]]},
+  {"id":70,"nome":"Verucchi Simonetta","disc":"A041","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","3A RIM",2,0],["VILLA_DIURNO","3B SIA",4,0],["VILLA_DIURNO","3D RIM",2,0],["VILLA_DIURNO","4B SIA",5,1],["VILLA_DIURNO","5B SIA",5,1],["VILLA_SERALE","1-2 SV",2,0],["VILLA_SERALE","3-4 SV",1,0]]},
+  {"id":71,"nome":"Vantini Manuel","disc":"A041","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1A BC",2,0],["VILLA_DIURNO","1B BC",2,0],["VILLA_DIURNO","1C BC",2,0],["VILLA_DIURNO","1D BC",2,0],["VILLA_DIURNO","2B BC",2,1],["VILLA_DIURNO","2C BC",2,1],["VILLA_DIURNO","2D BC",2,1],["VILLA_DIURNO","3C AFM",2,0],["VILLA_DIURNO","4D RIM",2,1]]},
+  {"id":72,"nome":"Borrata Mario (Villa)","disc":"A041","rosso":false,"note":"2 h Isola","ruolo":true,"assegn":[["ISOLA_DIURNO","2A",2,1],["VILLA_DIURNO","1E BC",2,0],["VILLA_DIURNO","1F T",2,0],["VILLA_DIURNO","2A BC",2,1],["VILLA_DIURNO","2E T",2,1],["VILLA_DIURNO","2F T",2,1],["VILLA_DIURNO","4A RIM",2,1],["VILLA_DIURNO","4C AFM",2,1]]},
+  {"id":73,"nome":"Bosco Adriana","disc":"A047","rosso":false,"note":"1 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","2A BC",4,1],["VILLA_DIURNO","4C AFM",3,1],["VILLA_DIURNO","4E TUR",3,1],["VILLA_SERALE","1-2 SV",3,0],["VILLA_SERALE","3-4 SV",3,0],["VILLA_SERALE","5SV",3,0]]},
+  {"id":74,"nome":"Comensolli Paolo","disc":"A047","rosso":false,"note":"2 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","2D BC",4,1],["VILLA_DIURNO","2E T",4,1],["VILLA_DIURNO","2F T",4,1]]},
+  {"id":75,"nome":"Finotti Gigliola","disc":"A047","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2C BC",4,1]]},
+  {"id":76,"nome":"Moliterni Antonio","disc":"A047","rosso":false,"note":"1 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","4B SIA",3,1],["VILLA_DIURNO","5D AFM",3,1]]},
+  {"id":77,"nome":"Rigo Maria","disc":"A047","rosso":false,"note":"12 h vicario","ruolo":true,"assegn":[["VILLA_DIURNO","4A RIM",3,1],["VILLA_DIURNO","5A RIM",3,1]]},
+  {"id":78,"nome":"Principe Carla","disc":"A047","rosso":false,"note":"PT 15, 2 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","2B BC",4,1],["VILLA_DIURNO","5B SIA",3,1],["VILLA_DIURNO","5E TUR",3,1]]},
+  {"id":79,"nome":"Spezzone A047 Villa","disc":"A047","rosso":false,"note":"spezzone","ruolo":false,"assegn":[["VILLA_DIURNO","4D RIM",3,1]]},
+  {"id":80,"nome":"Adami Alessandra","disc":"A012","rosso":false,"note":"PT 14, 2 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","4A RIM",6,1],["VILLA_DIURNO","5A RIM",6,1]]},
+  {"id":81,"nome":"Bagalà Sabrina","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","5B SIA",6,1]]},
+  {"id":82,"nome":"Bampa Elisabetta","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2A BC",6,1],["VILLA_DIURNO","2D BC",6,1]]},
+  {"id":83,"nome":"Baratella Michela","disc":"A012","rosso":false,"note":"PT 12","ruolo":true,"assegn":[["VILLA_DIURNO","4C AFM",6,1],["VILLA_DIURNO","4E TUR",6,1]]},
+  {"id":84,"nome":"Ventimiglia Maria I.","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2B BC",6,1],["VILLA_DIURNO","2F T",6,1]]},
+  {"id":85,"nome":"Gandini Serena","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","4B SIA",6,1],["VILLA_DIURNO","5E TUR",6,1]]},
+  {"id":86,"nome":"Gavioli Marco","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","5D AFM",6,1]]},
+  {"id":87,"nome":"Paiola Paola","disc":"A012","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2C BC",6,1],["VILLA_DIURNO","2E T",6,1]]},
+  {"id":88,"nome":"Zambreri Daniela","disc":"A050","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1A BC",2,0],["VILLA_DIURNO","1B BC",2,0],["VILLA_DIURNO","1C BC",2,0],["VILLA_DIURNO","2A BC",4,1],["VILLA_DIURNO","2B BC",4,1],["VILLA_DIURNO","2C BC",4,1]]},
+  {"id":89,"nome":"Ballarini Simonetta","disc":"AB24","rosso":false,"note":"PT 15","ruolo":true,"assegn":[["VILLA_DIURNO","5B SIA",3,1],["VILLA_DIURNO","5C AFM",3,1],["VILLA_SERALE","1-2 SV",2,0],["VILLA_SERALE","3-4 SV",3,0],["VILLA_SERALE","5SV",3,0]]},
+  {"id":90,"nome":"Ceriani Roberta","disc":"AB24","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2C BC",3,1],["VILLA_DIURNO","2F T",3,1],["VILLA_DIURNO","4B SIA",3,1]]},
+  {"id":91,"nome":"Cristini Monica","disc":"AB24","rosso":false,"note":"3 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","2A BC",3,1],["VILLA_DIURNO","4A RIM",3,1],["VILLA_DIURNO","5A RIM",3,1]]},
+  {"id":92,"nome":"Fiocco Francesca","disc":"AB24","rosso":false,"note":"6 h pot","ruolo":true,"assegn":[["VILLA_DIURNO","2B BC",3,1],["VILLA_DIURNO","5D AFM",3,1],["VILLA_DIURNO","5E TUR",3,1]]},
+  {"id":93,"nome":"Guglielmi Francesca","disc":"AB24","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2D BC",3,1],["VILLA_DIURNO","2E T",3,1],["VILLA_DIURNO","4C AFM",3,1],["VILLA_DIURNO","4E TUR",3,1]]},
+  {"id":94,"nome":"Maioriello Luca (Villa)","disc":"C030","rosso":false,"note":"9 h Isola","ruolo":true,"assegn":[["VILLA_DIURNO","3B SIA",3,0],["VILLA_DIURNO","4B SIA",3,1],["VILLA_DIURNO","5B SIA",3,1]]},
+  {"id":95,"nome":"Meneghello Luca","disc":"RLSS","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","2A BC",1,1],["VILLA_DIURNO","2B BC",1,1],["VILLA_DIURNO","2C BC",1,1],["VILLA_DIURNO","2D BC",1,1],["VILLA_DIURNO","2E T",1,1],["VILLA_DIURNO","3A RIM",1,0],["VILLA_DIURNO","3B SIA",1,0],["VILLA_DIURNO","3C AFM",1,0],["VILLA_DIURNO","3D RIM",1,0],["VILLA_DIURNO","3E TUR",1,0],["VILLA_DIURNO","4A RIM",1,1],["VILLA_DIURNO","4B SIA",1,1],["VILLA_DIURNO","4C AFM",1,1],["VILLA_DIURNO","4E TUR",1,1],["VILLA_DIURNO","5A RIM",1,1],["VILLA_DIURNO","5B SIA",1,1],["VILLA_DIURNO","5D AFM",1,1],["VILLA_DIURNO","5E TUR",1,1]]},
+  {"id":96,"nome":"Rinaldi Marco","disc":"RLSS","rosso":false,"note":"","ruolo":true,"assegn":[["VILLA_DIURNO","1A BC",1,0],["VILLA_DIURNO","1B BC",1,0],["VILLA_DIURNO","1C BC",1,0],["VILLA_DIURNO","1D BC",1,0],["VILLA_DIURNO","1E BC",1,0],["VILLA_DIURNO","1F T",1,0],["VILLA_DIURNO","2F T",1,1]]},
+];
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const calcOre = d => d.assegn.reduce((s,a)=>s+a[2],0);
+const calcPot = d => extractPot(d.note);
+const oreTot = (disc,st) => ORE[disc]&&ORE[disc][st]?Object.values(ORE[disc][st]).reduce((s,v)=>s+v,0):0;
+const oreAss = (docs,disc,st) => docs.filter(d=>d.disc===disc).flatMap(d=>d.assegn.filter(a=>a[0]===st)).reduce((s,a)=>s+a[2],0);
+const oreRes = (docs,disc) => Object.keys(ORE[disc]||{}).reduce((t,st)=>t+Math.max(0,oreTot(disc,st)-oreAss(docs,disc,st)),0);
+const getSede = st => st.startsWith("ISOLA")?"ISOLA":st.startsWith("VILLA")?"VILLA":"CARCERARIA";
+function bS(ore,std,max){
+  if(ore>max) return{bg:"#FEE2E2",c:"#DC2626"};
+  if(ore>std) return{bg:"#FEF3C7",c:"#D97706"};
+  if(ore===std) return{bg:"#DCFCE7",c:"#059669"};
+  if(ore===0) return{bg:"#F3F4F6",c:"#9CA3AF"};
+  return{bg:"#DBEAFE",c:"#1D4ED8"};
+}
+function getScavalco(docs) {
+  return docs.filter(d=>{
+    const hasI=d.assegn.some(a=>a[0].startsWith("ISOLA"));
+    const hasV=d.assegn.some(a=>a[0].startsWith("VILLA"));
+    return hasI&&hasV;
+  });
+}
+function generateExport(docenti,settings) {
+  const {oreStd,oreMax}=settings;
+  const html=`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Quadro Cattedre 2026/27 – Bolisani</title>
+<style>body{font-family:Arial,sans-serif;font-size:11px;margin:20px}h1{font-size:16px;color:#1B3A6B}h2{font-size:13px;color:#1B3A6B;border-bottom:2px solid #1B3A6B;margin-top:20px}table{border-collapse:collapse;width:100%;margin-bottom:16px}th{background:#1B3A6B;color:#fff;padding:4px 8px;text-align:left}td{padding:3px 8px;border-bottom:1px solid #ddd}.ok{color:#059669}.warn{color:#D97706}.err{color:#DC2626}.cont{background:#FEE2E2;color:#DC2626;padding:0 4px;border-radius:3px}@media print{.no-print{display:none}}</style></head><body>
+<div class="no-print"><button onclick="window.print()">🖨️ Stampa / Salva PDF</button></div>
+<h1>📚 Quadro Cattedre A.S. 2026/27 – I.I.S.S. Ettore Bolisani</h1>
+<h2>Riepilogo Docenti</h2>
+<table><tr><th>Docente</th><th>Disciplina</th><th>Ore</th><th>Stato</th><th>Classi (continuità)</th><th>Note</th></tr>
+${docenti.map(d=>{
+  const ore=calcOre(d);
+  const stato=ore>oreMax?'<span class="err">ECCESSO</span>':ore>oreStd?'<span class="warn">AUMENTATA</span>':ore===oreStd?'<span class="ok">COMPLETA</span>':'INCOMPLETA';
+  const classi=d.assegn.map(a=>`${a[1]}${a[3]?'<span class="cont">C</span>':''}`).join(', ');
+  return`<tr><td>${d.nome}${d.rosso?' ⚠️':''}</td><td>${d.disc} – ${CC[d.disc]||''}</td><td>${ore}h</td><td>${stato}</td><td>${classi}</td><td>${d.note||''}</td></tr>`;
+}).join('')}
+</table>
+<h2>Ore Residue per Disciplina</h2>
+<table><tr><th>Disciplina</th><th>Totale</th><th>Assegnate</th><th>Residue</th></tr>
+${Object.keys(CC).filter(k=>ORE[k]).map(disc=>{
+  const sedi=Object.keys(ORE[disc]);
+  const tot=sedi.reduce((s,st)=>s+oreTot(disc,st),0);
+  const ass=sedi.reduce((s,st)=>s+oreAss(docenti,disc,st),0);
+  const res=Math.max(0,tot-ass);
+  return`<tr><td>${disc} – ${CC[disc]}</td><td>${tot}h</td><td>${ass}h</td><td class="${res>0?'err':'ok'}">${res}h ${res===0?'✓':''}</td></tr>`;
+}).join('')}
+</table>
+<p style="color:#888;font-size:10px">Generato il ${new Date().toLocaleDateString('it-IT')} – Cattedra std ${oreStd}h, max ${oreMax}h</p>
+</body></html>`;
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function load(k){try{const r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch{return null;}}
+
+// ─── APP ─────────────────────────────────────────────────────────────────────
+const TABS=[["dashboard","Dashboard"],["disciplina","Disciplina"],["docenti","Docenti"],["classi","Classi"],["scavalco","Scavalco"],["gruppi","Gruppi Lingua"],["carcere","Carceraria"],["pot","Potenziamento"],["settings","Impostazioni"]];
+
+function App(){
+  const [view,setView]=useState("dashboard");
+  const [docenti,setDocenti]=useState(DOCENTI_BASE);
+  const [settings,setSettings]=useState({oreStd:18,oreMax:24,orePotIsola:120,orePotVilla:100});
+  const [selDisc,setSelDisc]=useState(null);
+  const [selDocId,setSelDocId]=useState(null);
+  const [search,setSearch]=useState("");
+  const [addForm,setAddForm]=useState({sedeTipo:"ISOLA_DIURNO",classe:"",ore:2,cont:0});
+  const [gruppiLingua,setGruppiLingua]=useState(GRUPPI_LINGUA_DEFAULT);
+  const [loaded,setLoaded]=useState(false);
+
+  useEffect(()=>{(async()=>{
+    const d=load("cat_doc");const s=load("cat_set");const g=load("cat_grp");
+    if(d)setDocenti(d);if(s)setSettings(s);if(g)setGruppiLingua(g);setLoaded(true);
+  })();},[]);
+
+  const saveDocs=useCallback(d=>{setDocenti(d);save("cat_doc",d);},[]);
+  const saveSet=useCallback(s=>{setSettings(s);save("cat_set",s);},[]);
+  const saveGrp=useCallback(g=>{setGruppiLingua(g);save("cat_grp",g);},[]);
+
+  const {oreStd,oreMax}=settings;
+  const alerts=useMemo(()=>{
+    const out=[];
+    docenti.forEach(d=>{const o=calcOre(d);if(o>oreMax)out.push({type:"error",msg:`${d.nome}: ${o}h (max ${oreMax}h)`,id:d.id});else if(o>oreStd)out.push({type:"warn",msg:`${d.nome}: ${o}h (>${oreStd}h)`,id:d.id});});
+    Object.keys(CC).filter(k=>ORE[k]).forEach(disc=>{const r=oreRes(docenti,disc);if(r>0)out.push({type:"info",msg:`${disc} – ${CC[disc]}: ${r}h residue`,disc});});
+    return out;
+  },[docenti,oreStd,oreMax]);
+
+  function updDoc(id,fn){saveDocs(docenti.map(d=>d.id===id?fn(d):d));}
+  function addAss(id){const{sedeTipo,classe,ore,cont}=addForm;if(!classe||ore<=0)return;updDoc(id,d=>({...d,assegn:[...d.assegn,[sedeTipo,classe,+ore,+cont]]}));setAddForm(f=>({...f,classe:""}));}
+  function remAss(id,i){updDoc(id,d=>({...d,assegn:d.assegn.filter((_,j)=>j!==i)}));}
+  function addDoc(){const n=prompt("Nome:");if(!n)return;const dc=prompt("Classe concorso:");if(!dc)return;const id=Math.max(...docenti.map(d=>d.id),0)+1;saveDocs([...docenti,{id,nome:n,disc:dc.toUpperCase(),rosso:false,note:"",ruolo:true,assegn:[]}]);}
+
+  const P={background:"#F0F4F8",minHeight:"100vh",fontFamily:"'Segoe UI',Arial,sans-serif"};
+  return(
+    <div style={P}>
+      <div style={{background:"#1B3A6B",color:"#fff",padding:"0 14px",display:"flex",alignItems:"center",gap:14,height:50}}>
+        <span style={{fontWeight:700,fontSize:15}}>📚 Gestione Cattedre 2026/27</span>
+        <span style={{fontSize:12,opacity:.7}}>I.I.S.S. Ettore Bolisani – Isola / Villafranca</span>
+        <div style={{flex:1}}/>
+        <button onClick={()=>generateExport(docenti,settings)} style={{background:"#2563EB",color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontSize:12,fontWeight:600}}>🖨️ Esporta</button>
+        {alerts.filter(a=>a.type==="error").length>0&&<span style={{background:"#DC2626",color:"#fff",borderRadius:10,padding:"2px 8px",fontSize:11,fontWeight:700}}>{alerts.filter(a=>a.type==="error").length} ERR</span>}
+        {alerts.filter(a=>a.type==="warn").length>0&&<span style={{background:"#D97706",color:"#fff",borderRadius:10,padding:"2px 8px",fontSize:11,fontWeight:700}}>{alerts.filter(a=>a.type==="warn").length} AVV</span>}
+      </div>
+      <div style={{background:"#fff",borderBottom:"1px solid #ddd",display:"flex",flexWrap:"wrap",padding:"0 6px"}}>
+        {TABS.map(([k,l])=>(
+          <button key={k} onClick={()=>setView(k)} style={{padding:"9px 13px",border:"none",borderBottom:view===k?"3px solid #1B3A6B":"3px solid transparent",background:"none",cursor:"pointer",fontWeight:view===k?700:400,color:view===k?"#1B3A6B":"#555",fontSize:12}}>{l}</button>
+        ))}
+      </div>
+      <div style={{padding:14,maxWidth:1400,margin:"0 auto"}}>
+        {!loaded&&<div style={{color:"#888",padding:20}}>Caricamento…</div>}
+        {loaded&&view==="dashboard"&&<DashView docenti={docenti} alerts={alerts} oreStd={oreStd} oreMax={oreMax} setView={setView} setSelDisc={setSelDisc} setSelDocId={setSelDocId}/>}
+        {loaded&&view==="disciplina"&&<DiscView docenti={docenti} selDisc={selDisc} setSelDisc={setSelDisc} oreStd={oreStd} oreMax={oreMax} onDoc={id=>{setSelDocId(id);setView("docenti");}}/>}
+        {loaded&&view==="docenti"&&<DocView docenti={docenti} selDocId={selDocId} setSelDocId={setSelDocId} oreStd={oreStd} oreMax={oreMax} search={search} setSearch={setSearch} addForm={addForm} setAddForm={setAddForm} addAss={addAss} remAss={remAss} updDoc={updDoc} addDoc={addDoc}/>}
+        {loaded&&view==="classi"&&<ClassiView docenti={docenti} oreStd={oreStd} oreMax={oreMax}/>}
+        {loaded&&view==="scavalco"&&<ScavalcoView docenti={docenti} oreStd={oreStd} oreMax={oreMax} onDoc={id=>{setSelDocId(id);setView("docenti");}}/>}
+        {loaded&&view==="gruppi"&&<GruppiView gruppi={gruppiLingua} saveGrp={saveGrp}/>}
+        {loaded&&view==="carcere"&&<CarcereView docenti={docenti} oreStd={oreStd} oreMax={oreMax}/>}
+        {loaded&&view==="pot"&&<PotView docenti={docenti} settings={settings} updDoc={updDoc}/>}
+        {loaded&&view==="settings"&&<SettingsView settings={settings} saveSet={saveSet} resetData={()=>{if(confirm("Ripristinare?"))saveDocs(DOCENTI_BASE);}} resetGruppi={()=>{if(confirm("Ripristinare gruppi lingua?"))saveGrp(GRUPPI_LINGUA_DEFAULT);}}/>}
+      </div>
+    </div>
+  );
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+function DashView({docenti,alerts,oreStd,oreMax,setView,setSelDisc,setSelDocId}){
+  const inRuolo=docenti.filter(d=>d.ruolo).length;
+  const completi=docenti.filter(d=>d.ruolo&&calcOre(d)===oreStd).length;
+  const eccesso=docenti.filter(d=>d.ruolo&&calcOre(d)>oreMax).length;
+  const vuoti=docenti.filter(d=>d.ruolo&&calcOre(d)===0).length;
+  return(
+    <div>
+      <h2 style={{fontSize:17,fontWeight:700,color:"#1B3A6B",marginBottom:14}}>Dashboard – A.S. 2026/27</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {[["Docenti in Ruolo",inRuolo,"#1B3A6B","👨‍🏫"],["Cattedre Complete",completi,"#059669","✅"],["Ore Eccesso",eccesso,"#DC2626","⚠️"],["Senza Ore",vuoti,"#9CA3AF","📋"]].map(([l,v,c,i])=>(
+          <div key={l} style={{background:"#fff",borderRadius:8,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.09)",borderLeft:`4px solid ${c}`}}>
+            <div style={{fontSize:24,fontWeight:800,color:c}}>{i} {v}</div>
+            <div style={{fontSize:12,color:"#6B7280",marginTop:3}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {alerts.length>0&&(
+        <div style={{background:"#fff",borderRadius:8,padding:14,marginBottom:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+          <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:8}}>Avvisi e Anomalie ({alerts.length})</div>
+          <div style={{maxHeight:180,overflowY:"auto"}}>
+            {alerts.map((a,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",marginBottom:3,borderRadius:5,background:a.type==="error"?"#FEF2F2":a.type==="warn"?"#FFFBEB":"#EFF6FF",fontSize:12,cursor:"pointer"}}
+                onClick={()=>{if(a.id){setSelDocId(a.id);setView("docenti");}if(a.disc){setSelDisc(a.disc);setView("disciplina");}}}>
+                <span>{a.type==="error"?"🔴":a.type==="warn"?"🟡":"🔵"}</span><span>{a.msg}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:10}}>Stato per Disciplina</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:7}}>
+          {Object.keys(CC).filter(k=>ORE[k]).map(disc=>{
+            const sedi=Object.keys(ORE[disc]);
+            const tot=sedi.reduce((s,st)=>s+oreTot(disc,st),0);
+            const ass=sedi.reduce((s,st)=>s+oreAss(docenti,disc,st),0);
+            const p=tot>0?Math.min(100,Math.round(ass/tot*100)):0;
+            const res=Math.max(0,tot-ass);
+            return(
+              <div key={disc} style={{padding:"7px 10px",borderRadius:6,border:"1px solid #E5E7EB",cursor:"pointer"}} onClick={()=>{setSelDisc(disc);setView("disciplina");}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                  <span style={{fontWeight:600,fontSize:12}}>{disc} – {CC[disc]}</span>
+                  <span style={{fontSize:11,color:res>0?"#DC2626":"#059669",fontWeight:600}}>{ass}/{tot}h {res>0?`(${res}h ▸)`:"✓"}</span>
+                </div>
+                <div style={{background:"#E5E7EB",borderRadius:4,height:5}}>
+                  <div style={{background:p>=100?"#059669":p>=80?"#D97706":"#DC2626",width:`${p}%`,height:5,borderRadius:4}}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── DISCIPLINA ───────────────────────────────────────────────────────────────
+function DiscView({docenti,selDisc,setSelDisc,oreStd,oreMax,onDoc}){
+  const docD=selDisc?docenti.filter(d=>d.disc===selDisc):[];
+  return(
+    <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:14}}>
+      <div style={{background:"#fff",borderRadius:8,padding:10,boxShadow:"0 1px 4px rgba(0,0,0,.07)",maxHeight:"80vh",overflowY:"auto"}}>
+        <div style={{fontWeight:700,fontSize:12,color:"#1B3A6B",marginBottom:7}}>Classi di Concorso</div>
+        {Object.keys(CC).filter(k=>ORE[k]).map(k=>{
+          const res=oreRes(docenti,k);
+          return(
+            <div key={k} onClick={()=>setSelDisc(k)} style={{padding:"7px 9px",borderRadius:6,cursor:"pointer",marginBottom:3,background:selDisc===k?"#1B3A6B":"transparent",color:selDisc===k?"#fff":"#374151",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div><div style={{fontWeight:600,fontSize:12}}>{k}</div><div style={{fontSize:10,opacity:.8}}>{CC[k]}</div></div>
+              {res>0?<span style={{background:"#DC2626",color:"#fff",borderRadius:9,padding:"1px 6px",fontSize:10,fontWeight:700}}>{res}h</span>:<span style={{color:selDisc===k?"#86EFAC":"#059669",fontSize:13}}>✓</span>}
+            </div>
+          );
+        })}
+      </div>
+      {!selDisc?(
+        <div style={{background:"#fff",borderRadius:8,padding:30,textAlign:"center",color:"#9CA3AF"}}>← Seleziona una classe di concorso</div>
+      ):(
+        <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+          <h2 style={{fontSize:16,fontWeight:700,color:"#1B3A6B",marginBottom:6}}>{selDisc} – {CC[selDisc]}</h2>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
+            {Object.keys(ORE[selDisc]||{}).map(st=>{
+              const tot=oreTot(selDisc,st);const ass=oreAss(docenti,selDisc,st);const res=tot-ass;
+              return(
+                <div key={st} style={{padding:"4px 12px",borderRadius:18,background:"#F3F4F6",fontSize:12}}>
+                  <b>{SEDE_LABEL[st]}</b> — Tot:<b>{tot}h</b> Ass:<b style={{color:ass>=tot?"#059669":"#D97706"}}>{ass}h</b>
+                  {res>0&&<span style={{color:"#DC2626",fontWeight:700}}> ⚠ -{res}h</span>}
+                  {res<=0&&<span style={{color:"#059669"}}> ✓</span>}
+                </div>
+              );
+            })}
+          </div>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr style={{background:"#F9FAFB"}}>
+              {["Docente","Ruolo","Classi assegnate","Ore tot.","Stato","Note"].map(h=><th key={h} style={{padding:"7px 9px",textAlign:"left",borderBottom:"1px solid #E5E7EB",fontWeight:600,color:"#6B7280"}}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {docD.length===0&&<tr><td colSpan={6} style={{padding:16,color:"#9CA3AF",textAlign:"center"}}>Nessun docente assegnato</td></tr>}
+              {docD.map(d=>{
+                const ore=calcOre(d);
+                const bs=bS(ore,oreStd,oreMax);
+                return(
+                  <tr key={d.id} style={{borderBottom:"1px solid #F3F4F6",cursor:"pointer"}} onClick={()=>onDoc(d.id)}>
+                    <td style={{padding:"7px 9px",fontWeight:600,color:d.rosso?"#DC2626":"#1B3A6B"}}>{d.nome}{!d.ruolo&&<span style={{fontSize:10,color:"#9CA3AF",marginLeft:5}}>(non conf.)</span>}</td>
+                    <td style={{padding:"7px 9px"}}><span style={{fontSize:11,padding:"2px 7px",borderRadius:9,background:d.ruolo?"#DCFCE7":"#F3F4F6",color:d.ruolo?"#059669":"#9CA3AF"}}>{d.ruolo?"In ruolo":"Esterno"}</span></td>
+                    <td style={{padding:"7px 9px"}}>
+                      {d.assegn.map((a,i)=>(
+                        <span key={i} style={{display:"inline-block",margin:"1px 2px",padding:"1px 6px",borderRadius:9,fontSize:10,background:a[3]?"#FEE2E2":"#EFF6FF",color:a[3]?"#DC2626":"#1D4ED8",border:a[3]?"1px solid #FECACA":"1px solid #BFDBFE"}}>
+                          {a[1]} ({a[2]}h){a[3]?"🔒":""}
+                        </span>
+                      ))}
+                    </td>
+                    <td style={{padding:"7px 9px"}}><span style={{padding:"2px 9px",borderRadius:10,fontSize:11,fontWeight:600,background:bs.bg,color:bs.c}}>{ore}h</span></td>
+                    <td style={{padding:"7px 9px",fontSize:11}}>{ore>oreMax?"⚠️ Eccesso":ore>oreStd?"Aumentata":ore===oreStd?"✓ Completa":ore===0?"—":"Incompleta"}</td>
+                    <td style={{padding:"7px 9px",fontSize:11,color:"#6B7280"}}>{d.note||"—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {Object.keys(ORE[selDisc]||{}).map(st=>{
+            const cls=Object.keys(ORE[selDisc][st]||{});
+            return cls.length?(
+              <div key={st} style={{marginTop:16}}>
+                <div style={{fontWeight:700,fontSize:12,color:"#1B3A6B",marginBottom:7}}>{SEDE_LABEL[st]} – Copertura Classi</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                  {cls.map(cl=>{
+                    const need=ORE[selDisc][st][cl];
+                    const dCl=docD.filter(d=>d.assegn.some(a=>a[0]===st&&a[1]===cl));
+                    const cop=dCl.flatMap(d=>d.assegn.filter(a=>a[0]===st&&a[1]===cl)).reduce((s,a)=>s+a[2],0);
+                    const cont=dCl.some(d=>d.assegn.some(a=>a[0]===st&&a[1]===cl&&a[3]===1));
+                    const ok=cop>=need;
+                    return(
+                      <div key={cl} title={dCl.map(d=>d.nome).join(", ")||"Non assegnato"} style={{padding:"4px 9px",borderRadius:6,fontSize:11,textAlign:"center",background:ok?"#F0FDF4":"#FFF1F2",color:ok?"#059669":"#DC2626",border:cont?"2px solid #DC2626":"1px solid transparent",minWidth:70}}>
+                        <div style={{fontWeight:700}}>{cl}</div>
+                        <div>{cop}/{need}h {ok?"✓":"⚠"}</div>
+                        {cont&&<div style={{fontSize:9,color:"#DC2626"}}>🔒cont.</div>}
+                        {dCl.length>0&&<div style={{fontSize:9,opacity:.7}}>{dCl.map(d=>d.nome.split(" ")[0]).join(",")}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ):null;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DOCENTI ─────────────────────────────────────────────────────────────────
+function DocView({docenti,selDocId,setSelDocId,oreStd,oreMax,search,setSearch,addForm,setAddForm,addAss,remAss,updDoc,addDoc}){
+  const filt=useMemo(()=>{const q=search.toLowerCase();return docenti.filter(d=>d.nome.toLowerCase().includes(q)||d.disc.toLowerCase().includes(q)||(CC[d.disc]||'').toLowerCase().includes(q));},[docenti,search]);
+  const selDoc=selDocId?docenti.find(d=>d.id===selDocId):null;
+  const oreDoc=selDoc?calcOre(selDoc):0;
+  const potDoc=selDoc?calcPot(selDoc):0;
+  const classiDisp=CLASSI[addForm.sedeTipo]||[];
+  return(
+    <div style={{display:"grid",gridTemplateColumns:"290px 1fr",gap:14}}>
+      <div style={{background:"#fff",borderRadius:8,padding:10,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{display:"flex",gap:7,marginBottom:8}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Cerca docente…" style={{flex:1,padding:"5px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}/>
+          <button onClick={addDoc} style={{padding:"5px 10px",background:"#1B3A6B",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12}}>+</button>
+        </div>
+        <div style={{maxHeight:"74vh",overflowY:"auto"}}>
+          {filt.map(d=>{const ore=calcOre(d);const bs=bS(ore,oreStd,oreMax);return(
+            <div key={d.id} onClick={()=>setSelDocId(d.id)} style={{padding:"7px 9px",borderRadius:6,cursor:"pointer",marginBottom:3,background:selDocId===d.id?"#EFF6FF":"transparent",borderLeft:selDocId===d.id?"3px solid #1B3A6B":"3px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:12,color:d.rosso?"#DC2626":"#1B3A6B"}}>{d.nome}</div>
+                <div style={{fontSize:10,color:"#6B7280"}}>{d.disc} – {CC[d.disc]}</div>
+              </div>
+              <span style={{padding:"2px 7px",borderRadius:9,fontSize:11,fontWeight:700,background:bs.bg,color:bs.c}}>{ore}h</span>
+            </div>
+          );})}
+        </div>
+      </div>
+      {!selDoc?(
+        <div style={{background:"#fff",borderRadius:8,padding:30,textAlign:"center",color:"#9CA3AF"}}>← Seleziona un docente</div>
+      ):(
+        <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+            <div>
+              <h2 style={{fontSize:16,fontWeight:700,color:selDoc.rosso?"#DC2626":"#1B3A6B",margin:0}}>{selDoc.nome}</h2>
+              <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{selDoc.disc} – {CC[selDoc.disc]}</div>
+            </div>
+            <button onClick={()=>updDoc(selDoc.id,d=>({...d,ruolo:!d.ruolo}))} style={{padding:"4px 10px",borderRadius:6,border:"1px solid",cursor:"pointer",fontSize:11,background:selDoc.ruolo?"#DCFCE7":"#F3F4F6",color:selDoc.ruolo?"#059669":"#6B7280",borderColor:selDoc.ruolo?"#86EFAC":"#D1D5DB"}}>
+              {selDoc.ruolo?"✓ In ruolo":"✗ Non confermato"}
+            </button>
+          </div>
+          {/* Barra ore */}
+          <div style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+              <span style={{fontWeight:600}}>Ore totali: <span style={{fontSize:17,...bS(oreDoc,oreStd,oreMax)}}>{oreDoc}h</span>{potDoc>0&&<span style={{fontSize:11,color:"#6366F1",marginLeft:8}}>di cui {potDoc}h pot.</span>}</span>
+              <span style={{color:"#6B7280"}}>Std: {oreStd}h | Max: {oreMax}h</span>
+            </div>
+            <div style={{background:"#E5E7EB",borderRadius:6,height:10,position:"relative"}}>
+              <div style={{width:`${Math.min(100,oreDoc/oreMax*100)}%`,height:10,borderRadius:6,background:oreDoc>oreMax?"#DC2626":oreDoc>oreStd?"#F59E0B":"#059669"}}/>
+              <div style={{position:"absolute",left:`${oreStd/oreMax*100}%`,top:-2,width:2,height:14,background:"#1B3A6B"}}/>
+            </div>
+            <div style={{fontSize:10,color:"#9CA3AF",marginTop:2}}>
+              {oreDoc<oreStd&&`⚠ Mancano ${oreStd-oreDoc}h`}{oreDoc===oreStd&&"✓ Cattedra completa"}{oreDoc>oreStd&&oreDoc<=oreMax&&`Aumentata +${oreDoc-oreStd}h (dirigente)`}{oreDoc>oreMax&&`🔴 Eccesso di ${oreDoc-oreMax}h`}
+            </div>
+          </div>
+          {/* Note */}
+          <div style={{marginBottom:12,display:"flex",gap:7,alignItems:"center"}}>
+            <label style={{fontSize:11,color:"#6B7280",whiteSpace:"nowrap"}}>Note:</label>
+            <input value={selDoc.note} onChange={e=>updDoc(selDoc.id,d=>({...d,note:e.target.value}))} style={{flex:1,padding:"4px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}} placeholder="PT 15, Vicario, scavalco, 9 pot…"/>
+          </div>
+          {/* Tabella assegnazioni */}
+          <div style={{marginBottom:12}}>
+            <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:6}}>Assegnazioni</div>
+            {selDoc.assegn.length===0&&<div style={{color:"#9CA3AF",fontSize:12,padding:"10px 0"}}>Nessuna classe assegnata</div>}
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              {selDoc.assegn.length>0&&<thead><tr style={{background:"#F9FAFB"}}>
+                {["Sede","Classe","Ore","Continuità",""].map(h=><th key={h} style={{padding:"5px 9px",textAlign:"left",borderBottom:"1px solid #E5E7EB",fontWeight:600,color:"#6B7280"}}>{h}</th>)}
+              </tr></thead>}
+              <tbody>{selDoc.assegn.map((a,i)=>(
+                <tr key={i} style={{borderBottom:"1px solid #F3F4F6",background:a[3]?"#FFF5F5":"transparent"}}>
+                  <td style={{padding:"5px 9px"}}><span style={{fontSize:10,padding:"2px 7px",borderRadius:9,background:"#EFF6FF",color:"#1D4ED8"}}>{SEDE_LABEL[a[0]]||a[0]}</span></td>
+                  <td style={{padding:"5px 9px",fontWeight:600}}>{a[1]}</td>
+                  <td style={{padding:"5px 9px",fontWeight:700,color:"#1B3A6B"}}>{a[2]}h</td>
+                  <td style={{padding:"5px 9px"}}>{a[3]===1?<span style={{background:"#FEE2E2",color:"#DC2626",padding:"2px 7px",borderRadius:9,fontSize:10,fontWeight:700}}>🔒 Continuità</span>:<span style={{color:"#9CA3AF",fontSize:10}}>—</span>}</td>
+                  <td style={{padding:"5px 9px"}}><button onClick={()=>remAss(selDoc.id,i)} style={{background:"#FEE2E2",color:"#DC2626",border:"none",borderRadius:5,cursor:"pointer",padding:"2px 8px",fontSize:11}}>✕</button></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          {/* Aggiungi */}
+          <div style={{background:"#F9FAFB",borderRadius:7,padding:10}}>
+            <div style={{fontWeight:700,fontSize:12,color:"#1B3A6B",marginBottom:7}}>+ Aggiungi Assegnazione</div>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+              <select value={addForm.sedeTipo} onChange={e=>setAddForm(f=>({...f,sedeTipo:e.target.value,classe:""}))} style={{padding:"5px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}>
+                {Object.keys(SEDE_LABEL).map(st=><option key={st} value={st}>{SEDE_LABEL[st]}</option>)}
+              </select>
+              <select value={addForm.classe} onChange={e=>setAddForm(f=>({...f,classe:e.target.value}))} style={{padding:"5px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12,minWidth:130}}>
+                <option value="">Classe…</option>
+                {classiDisp.map(cl=><option key={cl} value={cl}>{cl}</option>)}
+              </select>
+              <input type="number" min={1} max={10} value={addForm.ore} onChange={e=>setAddForm(f=>({...f,ore:+e.target.value}))} style={{width:60,padding:"5px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}/>
+              <label style={{display:"flex",alignItems:"center",gap:4,fontSize:12,cursor:"pointer"}}>
+                <input type="checkbox" checked={addForm.cont===1} onChange={e=>setAddForm(f=>({...f,cont:e.target.checked?1:0}))}/> Continuità
+              </label>
+              <button onClick={()=>addAss(selDoc.id)} style={{padding:"5px 14px",background:"#1B3A6B",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600}}>Aggiungi</button>
+            </div>
+          </div>
+          {/* Riepilogo per sede */}
+          <div style={{marginTop:10,display:"flex",gap:7,flexWrap:"wrap"}}>
+            {[...new Set(selDoc.assegn.map(a=>a[0]))].map(st=>{
+              const o=selDoc.assegn.filter(a=>a[0]===st).reduce((s,a)=>s+a[2],0);
+              return <div key={st} style={{padding:"3px 10px",borderRadius:18,background:"#EFF6FF",fontSize:11,color:"#1D4ED8"}}>{SEDE_LABEL[st]}: <b>{o}h</b></div>;
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CLASSI ───────────────────────────────────────────────────────────────────
+function ClassiView({docenti}){
+  const [st,setSt]=useState("ISOLA_DIURNO");
+  const [disc,setDisc]=useState("A012");
+  const classi=CLASSI[st]||[];
+  const ore=((ORE[disc]||{})[st])||{};
+  return(
+    <div>
+      <div style={{display:"flex",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+        {[["Sede","st",Object.keys(SEDE_LABEL)],[("Disciplina"),disc,Object.keys(CC).filter(k=>ORE[k]&&ORE[k][st])]].map(([label,_v,opts],i)=>(
+          <div key={i}>
+            <label style={{fontSize:11,color:"#6B7280",display:"block",marginBottom:3}}>{label}</label>
+            {i===0?(
+              <select value={st} onChange={e=>setSt(e.target.value)} style={{padding:"5px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}>
+                {Object.keys(SEDE_LABEL).map(k=><option key={k} value={k}>{SEDE_LABEL[k]}</option>)}
+              </select>
+            ):(
+              <select value={disc} onChange={e=>setDisc(e.target.value)} style={{padding:"5px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}>
+                {Object.keys(CC).filter(k=>ORE[k]&&ORE[k][st]).map(k=><option key={k} value={k}>{k} – {CC[k]}</option>)}
+              </select>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:10}}>{CC[disc]} – {SEDE_LABEL[st]}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:9}}>
+          {classi.filter(cl=>ore[cl]>0).map(cl=>{
+            const need=ore[cl]||0;
+            const dCl=docenti.filter(d=>d.disc===disc&&d.assegn.some(a=>a[0]===st&&a[1]===cl));
+            const cop=dCl.flatMap(d=>d.assegn.filter(a=>a[0]===st&&a[1]===cl)).reduce((s,a)=>s+a[2],0);
+            const cont=dCl.some(d=>d.assegn.some(a=>a[0]===st&&a[1]===cl&&a[3]===1));
+            const ok=cop>=need;
+            return(
+              <div key={cl} style={{borderRadius:7,padding:10,border:cont?"2px solid #DC2626":"1px solid #E5E7EB",background:ok?"#F0FDF4":"#FFF1F2"}}>
+                <div style={{fontWeight:700,fontSize:13,color:ok?"#059669":"#DC2626"}}>{cl}</div>
+                <div style={{fontSize:12,margin:"4px 0"}}>{cop}/{need}h {ok?"✓":"⚠"}</div>
+                {cont&&<div style={{fontSize:10,color:"#DC2626",marginBottom:3}}>🔒 Continuità</div>}
+                {dCl.length>0?dCl.map(d=><div key={d.id} style={{fontSize:11,color:"#374151"}}>👤 {d.nome}</div>):<div style={{fontSize:11,color:"#9CA3AF"}}>Non assegnato</div>}
+              </div>
+            );
+          })}
+          {classi.filter(cl=>ore[cl]>0).length===0&&<div style={{color:"#9CA3AF",fontSize:12}}>Nessuna classe per questa combinazione.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SCAVALCO ─────────────────────────────────────────────────────────────────
+function ScavalcoView({docenti,oreStd,oreMax,onDoc}){
+  const scavalco=useMemo(()=>getScavalco(docenti),[docenti]);
+  const T={background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"};
+  return(
+    <div>
+      <h2 style={{fontSize:16,fontWeight:700,color:"#1B3A6B",marginBottom:12}}>Docenti a Scavalco – Isola + Villafranca</h2>
+      <div style={{...T,marginBottom:12}}>
+        <div style={{fontSize:12,color:"#6B7280",marginBottom:10}}>Docenti con ore assegnate su entrambe le sedi. La barra mostra la distribuzione Isola / Villa / Serale.</div>
+        {scavalco.length===0&&<div style={{color:"#9CA3AF",fontSize:13,padding:"12px 0"}}>Nessun docente a scavalco rilevato.</div>}
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          {scavalco.length>0&&<thead><tr style={{background:"#F9FAFB"}}>
+            {["Docente","Disciplina","Ore Isola","Ore Villa","Ore Serale","Totale","Stato"].map(h=><th key={h} style={{padding:"7px 9px",textAlign:"left",borderBottom:"1px solid #E5E7EB",fontWeight:600,color:"#6B7280"}}>{h}</th>)}
+          </tr></thead>}
+          <tbody>
+            {scavalco.map(d=>{
+              const oI=d.assegn.filter(a=>a[0]==="ISOLA_DIURNO").reduce((s,a)=>s+a[2],0);
+              const oV=d.assegn.filter(a=>a[0]==="VILLA_DIURNO").reduce((s,a)=>s+a[2],0);
+              const oS=d.assegn.filter(a=>a[0]==="ISOLA_SERALE"||a[0]==="VILLA_SERALE").reduce((s,a)=>s+a[2],0);
+              const tot=calcOre(d);
+              const bs=bS(tot,oreStd,oreMax);
+              return(
+                <tr key={d.id} style={{borderBottom:"1px solid #F3F4F6",cursor:"pointer"}} onClick={()=>onDoc(d.id)}>
+                  <td style={{padding:"7px 9px",fontWeight:600,color:d.rosso?"#DC2626":"#1B3A6B"}}>{d.nome}</td>
+                  <td style={{padding:"7px 9px",color:"#6B7280"}}>{d.disc}</td>
+                  <td style={{padding:"7px 9px"}}>{oI>0?<span style={{background:"#DBEAFE",color:"#1D4ED8",padding:"2px 8px",borderRadius:9,fontSize:11}}>{oI}h</span>:"—"}</td>
+                  <td style={{padding:"7px 9px"}}>{oV>0?<span style={{background:"#F3E8FF",color:"#7C3AED",padding:"2px 8px",borderRadius:9,fontSize:11}}>{oV}h</span>:"—"}</td>
+                  <td style={{padding:"7px 9px"}}>{oS>0?<span style={{background:"#FEF3C7",color:"#D97706",padding:"2px 8px",borderRadius:9,fontSize:11}}>{oS}h</span>:"—"}</td>
+                  <td style={{padding:"7px 9px"}}><span style={{padding:"2px 9px",borderRadius:10,fontSize:11,fontWeight:700,background:bs.bg,color:bs.c}}>{tot}h</span></td>
+                  <td style={{padding:"7px 9px",fontSize:11}}>{tot>oreMax?"⚠️ Eccesso":tot>oreStd?"Aumentata":tot===oreStd?"✓ Completa":"Incompleta"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{...T}}>
+        <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:8}}>Tutti i docenti con presenza serale</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+          {docenti.filter(d=>d.assegn.some(a=>a[0].includes("SERALE"))).map(d=>{
+            const oSI=d.assegn.filter(a=>a[0]==="ISOLA_SERALE").reduce((s,a)=>s+a[2],0);
+            const oSV=d.assegn.filter(a=>a[0]==="VILLA_SERALE").reduce((s,a)=>s+a[2],0);
+            return(
+              <div key={d.id} style={{padding:"6px 12px",borderRadius:7,background:"#FFFBEB",border:"1px solid #FDE68A",fontSize:12}}>
+                <b style={{color:"#1B3A6B"}}>{d.nome}</b> <span style={{color:"#6B7280"}}>{d.disc}</span>
+                {oSI>0&&<span style={{marginLeft:6,background:"#FEF3C7",color:"#D97706",padding:"1px 6px",borderRadius:8,fontSize:10}}>Isola Ser. {oSI}h</span>}
+                {oSV>0&&<span style={{marginLeft:4,background:"#F3E8FF",color:"#7C3AED",padding:"1px 6px",borderRadius:8,fontSize:10}}>Villa Ser. {oSV}h</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── GRUPPI LINGUA ────────────────────────────────────────────────────────────
+function GruppiView({gruppi,saveGrp}){
+  const [filterSede,setFilterSede]=useState("ALL");
+  const [edit,setEdit]=useState(null);
+  const [form,setForm]=useState({sede:"ISOLA",anno:"3",gruppo:"",disc:"AB24",classiOrigine:"",docente:"",ore:3,note:""});
+  const filt=filterSede==="ALL"?gruppi:gruppi.filter(g=>g.sede===filterSede);
+  function startEdit(g){setEdit(g.id);setForm({...g,classiOrigine:g.classiOrigine.join(", ")});}
+  function saveEdit(){saveGrp(gruppi.map(g=>g.id===edit?{...form,id:g.id,classiOrigine:form.classiOrigine.split(",").map(s=>s.trim())}:g));setEdit(null);}
+  function addGruppo(){const id=Math.max(...gruppi.map(g=>g.id),0)+1;saveGrp([...gruppi,{...form,id,classiOrigine:form.classiOrigine.split(",").map(s=>s.trim())}]);setForm(f=>({...f,gruppo:"",classiOrigine:"",docente:"",note:""}));}
+  function delGruppo(id){if(confirm("Eliminare gruppo?"))saveGrp(gruppi.filter(g=>g.id!==id));}
+  return(
+    <div>
+      <h2 style={{fontSize:16,fontWeight:700,color:"#1B3A6B",marginBottom:12}}>Gruppi Lingua – 2ª e 3ª Lingua Straniera</h2>
+      <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
+        {["ALL","ISOLA","VILLA"].map(s=>(
+          <button key={s} onClick={()=>setFilterSede(s)} style={{padding:"5px 14px",borderRadius:6,border:"1px solid #D1D5DB",background:filterSede===s?"#1B3A6B":"#fff",color:filterSede===s?"#fff":"#374151",cursor:"pointer",fontSize:12,fontWeight:filterSede===s?700:400}}>{s==="ALL"?"Tutti":s==="ISOLA"?"Isola":"Villafranca"}</button>
+        ))}
+        <span style={{fontSize:11,color:"#9CA3AF"}}>{filt.length} gruppi</span>
+      </div>
+      <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)",marginBottom:14,overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr style={{background:"#F9FAFB"}}>
+            {["Sede","Anno","Gruppo","Disciplina","Classi di provenienza","Docente","Ore","Note",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",borderBottom:"1px solid #E5E7EB",fontWeight:600,color:"#6B7280",whiteSpace:"nowrap"}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {filt.map(g=>(
+              <tr key={g.id} style={{borderBottom:"1px solid #F3F4F6"}}>
+                {edit===g.id?(
+                  <>
+                    <td colSpan={8} style={{padding:"8px"}}>
+                      <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                        <select value={form.sede} onChange={e=>setForm(f=>({...f,sede:e.target.value}))} style={{padding:"4px 7px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:11}}>
+                          <option value="ISOLA">Isola</option><option value="VILLA">Villa</option>
+                        </select>
+                        <input value={form.anno} onChange={e=>setForm(f=>({...f,anno:e.target.value}))} placeholder="Anno" style={{width:50,...inp}}/>
+                        <input value={form.gruppo} onChange={e=>setForm(f=>({...f,gruppo:e.target.value}))} placeholder="Nome gruppo" style={{width:160,...inp}}/>
+                        <select value={form.disc} onChange={e=>setForm(f=>({...f,disc:e.target.value}))} style={{padding:"4px 7px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:11}}>
+                          {["AB24","AC24","A346"].map(k=><option key={k} value={k}>{k}</option>)}
+                        </select>
+                        <input value={form.classiOrigine} onChange={e=>setForm(f=>({...f,classiOrigine:e.target.value}))} placeholder="Classi (sep. virgola)" style={{width:200,...inp}}/>
+                        <input value={form.docente} onChange={e=>setForm(f=>({...f,docente:e.target.value}))} placeholder="Docente" style={{width:120,...inp}}/>
+                        <input type="number" value={form.ore} onChange={e=>setForm(f=>({...f,ore:+e.target.value}))} style={{width:45,...inp}}/>
+                        <input value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} placeholder="Note" style={{width:80,...inp}}/>
+                        <button onClick={saveEdit} style={{...btn,background:"#059669"}}>✓</button>
+                        <button onClick={()=>setEdit(null)} style={{...btn,background:"#6B7280"}}>✕</button>
+                      </div>
+                    </td>
+                  </>
+                ):(
+                  <>
+                    <td style={{padding:"6px 8px"}}><span style={{padding:"2px 7px",borderRadius:8,background:g.sede==="ISOLA"?"#DBEAFE":"#F3E8FF",color:g.sede==="ISOLA"?"#1D4ED8":"#7C3AED",fontSize:10,fontWeight:700}}>{g.sede}</span></td>
+                    <td style={{padding:"6px 8px",fontWeight:600}}>{g.anno}°</td>
+                    <td style={{padding:"6px 8px",fontWeight:600}}>{g.gruppo}</td>
+                    <td style={{padding:"6px 8px"}}><span style={{background:"#FEF3C7",color:"#D97706",padding:"2px 6px",borderRadius:7,fontSize:10,fontWeight:700}}>{g.disc}</span></td>
+                    <td style={{padding:"6px 8px",fontSize:11,color:"#374151"}}>{g.classiOrigine.join(" | ")}</td>
+                    <td style={{padding:"6px 8px",color:g.docente?"#059669":"#9CA3AF"}}>{g.docente||"— da assegnare"}</td>
+                    <td style={{padding:"6px 8px",fontWeight:700,color:"#1B3A6B"}}>{g.ore}h</td>
+                    <td style={{padding:"6px 8px",fontSize:10,color:"#9CA3AF"}}>{g.note||"—"}</td>
+                    <td style={{padding:"6px 8px"}}>
+                      <button onClick={()=>startEdit(g)} style={{...btn,background:"#3B82F6",marginRight:3}}>✏</button>
+                      <button onClick={()=>delGruppo(g.id)} style={{...btn,background:"#DC2626"}}>✕</button>
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Aggiungi gruppo */}
+      <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:8}}>+ Aggiungi Gruppo Lingua</div>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+          <select value={form.sede} onChange={e=>setForm(f=>({...f,sede:e.target.value}))} style={{padding:"5px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}>
+            <option value="ISOLA">Isola</option><option value="VILLA">Villafranca</option>
+          </select>
+          <input value={form.anno} onChange={e=>setForm(f=>({...f,anno:e.target.value}))} placeholder="Anno (es. 3)" style={{width:60,...inp2}}/>
+          <input value={form.gruppo} onChange={e=>setForm(f=>({...f,gruppo:e.target.value}))} placeholder="Nome gruppo" style={{width:160,...inp2}}/>
+          <select value={form.disc} onChange={e=>setForm(f=>({...f,disc:e.target.value}))} style={{padding:"5px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12}}>
+            {["AB24","AC24","A346"].map(k=><option key={k} value={k}>{k} – {CC[k]}</option>)}
+          </select>
+          <input value={form.classiOrigine} onChange={e=>setForm(f=>({...f,classiOrigine:e.target.value}))} placeholder="Classi (es: 3A TUR, 3B RIM)" style={{width:190,...inp2}}/>
+          <input value={form.docente} onChange={e=>setForm(f=>({...f,docente:e.target.value}))} placeholder="Docente" style={{width:120,...inp2}}/>
+          <input type="number" value={form.ore} onChange={e=>setForm(f=>({...f,ore:+e.target.value}))} style={{width:55,...inp2}}/>
+          <button onClick={addGruppo} style={{padding:"5px 14px",background:"#1B3A6B",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600}}>Aggiungi</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+const inp={padding:"4px 7px",borderRadius:5,border:"1px solid #D1D5DB",fontSize:11};
+const inp2={padding:"5px 9px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:12};
+const btn={padding:"3px 8px",border:"none",borderRadius:5,cursor:"pointer",color:"#fff",fontSize:11};
+
+// ─── CARCERARIA ───────────────────────────────────────────────────────────────
+function CarcereView({docenti}){
+  const anni=["I Anno","II Anno","III Anno","IV Anno","V Anno"];
+  const [selAnno,setSelAnno]=useState("I Anno");
+  const ore=ORE_CARCERARIA[selAnno]||{};
+  const discList=Object.keys(ore);
+  return(
+    <div>
+      <h2 style={{fontSize:16,fontWeight:700,color:"#1B3A6B",marginBottom:12}}>Sezione Carceraria – SIA Penitenziario</h2>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+        {anni.map(a=>(
+          <button key={a} onClick={()=>setSelAnno(a)} style={{padding:"6px 14px",borderRadius:7,border:"1px solid #D1D5DB",background:selAnno===a?"#1B3A6B":"#fff",color:selAnno===a?"#fff":"#374151",cursor:"pointer",fontSize:12,fontWeight:selAnno===a?700:400}}>{a}</button>
+        ))}
+      </div>
+      <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:700,fontSize:14,color:"#1B3A6B",marginBottom:12}}>{selAnno} – Quadro Ore</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+          {discList.map(disc=>{
+            const need=ore[disc]||0;
+            const dCl=docenti.filter(d=>d.disc===disc&&d.assegn.some(a=>a[0]==="CARCERARIA"&&a[1]===selAnno));
+            const cop=dCl.flatMap(d=>d.assegn.filter(a=>a[0]==="CARCERARIA"&&a[1]===selAnno)).reduce((s,a)=>s+a[2],0);
+            const ok=cop>=need;
+            return(
+              <div key={disc} style={{borderRadius:7,padding:12,border:"1px solid #E5E7EB",background:ok?"#F0FDF4":"#FFF1F2"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <span style={{fontWeight:700,fontSize:12}}>{disc}</span>
+                  <span style={{fontSize:10,color:"#6B7280"}}>{CC[disc]||disc}</span>
+                </div>
+                <div style={{fontSize:13,fontWeight:700,color:ok?"#059669":"#DC2626",marginBottom:6}}>{cop}/{need}h {ok?"✓":"⚠"}</div>
+                {dCl.length>0?dCl.map(d=><div key={d.id} style={{fontSize:11,color:"#374151"}}>👤 {d.nome}</div>):(
+                  <div style={{fontSize:11,color:"#9CA3AF",fontStyle:"italic"}}>
+                    Da assegnare – usare tab Docenti<br/>
+                    <span style={{fontSize:10}}>siedeTipo: CARCERARIA, classe: {selAnno}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{marginTop:14,padding:"10px 14px",background:"#EFF6FF",borderRadius:7,fontSize:12,color:"#1D4ED8"}}>
+          💡 Per assegnare docenti alla sezione carceraria: vai su <b>Per Docente</b> → seleziona il docente → Aggiungi Assegnazione → scegli <b>Sezione Carceraria</b> e la classe (es. <b>{selAnno}</b>).
+        </div>
+      </div>
+      <div style={{marginTop:14,background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:8}}>Totale ore carcere per anno</div>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr style={{background:"#F9FAFB"}}>
+            {["Anno","Ore tot.","Discipline",...anni.map(a=>"")].slice(0,3).map(h=><th key={h} style={{padding:"6px 9px",textAlign:"left",borderBottom:"1px solid #E5E7EB",fontWeight:600,color:"#6B7280"}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {anni.map(a=>{
+              const o=ORE_CARCERARIA[a]||{};
+              const tot=Object.values(o).reduce((s,v)=>s+v,0);
+              return(
+                <tr key={a} style={{borderBottom:"1px solid #F3F4F6",background:a===selAnno?"#EFF6FF":"transparent",cursor:"pointer"}} onClick={()=>setSelAnno(a)}>
+                  <td style={{padding:"6px 9px",fontWeight:600}}>{a}</td>
+                  <td style={{padding:"6px 9px",fontWeight:700,color:"#1B3A6B"}}>{tot}h</td>
+                  <td style={{padding:"6px 9px",fontSize:11,color:"#6B7280"}}>{Object.keys(o).join(", ")}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── POTENZIAMENTO ─────────────────────────────────────────────────────────────
+function PotView({docenti,settings,updDoc}){
+  const {orePotIsola,orePotVilla}=settings;
+  const docPot=useMemo(()=>docenti.filter(d=>calcPot(d)>0||d.assegn.length===0),[docenti]);
+  const usatiIsola=docenti.filter(d=>d.assegn.some(a=>a[0].startsWith("ISOLA"))).reduce((s,d)=>s+calcPot(d),0);
+  const usatiVilla=docenti.filter(d=>d.assegn.some(a=>a[0].startsWith("VILLA"))).reduce((s,d)=>s+calcPot(d),0);
+  const potDocAll=docenti.filter(d=>calcPot(d)>0);
+  return(
+    <div>
+      <h2 style={{fontSize:16,fontWeight:700,color:"#1B3A6B",marginBottom:12}}>Organico del Potenziamento</h2>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+        {[["Isola – Ore Pot. totali",orePotIsola,usatiIsola,"#1B3A6B"],["Villafranca – Ore Pot. totali",orePotVilla,usatiVilla,"#7C3AED"]].map(([label,tot,usati,col])=>{
+          const res=tot-usati;const p=tot>0?Math.min(100,Math.round(usati/tot*100)):0;
+          return(
+            <div key={label} style={{background:"#fff",borderRadius:8,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,.07)",borderLeft:`4px solid ${col}`}}>
+              <div style={{fontWeight:700,fontSize:13,color:col,marginBottom:8}}>{label}: <b>{tot}h</b></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
+                <span>Assegnate: <b style={{color:usati>tot?"#DC2626":"#059669"}}>{usati}h</b></span>
+                <span>Residue: <b style={{color:res<0?"#DC2626":res<10?"#D97706":"#059669"}}>{res}h</b></span>
+              </div>
+              <div style={{background:"#E5E7EB",borderRadius:5,height:8}}>
+                <div style={{background:p>100?"#DC2626":p>80?"#D97706":"#059669",width:`${Math.min(100,p)}%`,height:8,borderRadius:5}}/>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{background:"#fff",borderRadius:8,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:700,fontSize:13,color:"#1B3A6B",marginBottom:10}}>Docenti con ore di potenziamento</div>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr style={{background:"#F9FAFB"}}>
+            {["Docente","Disciplina","Ore Cattedra","Ore Pot.","Totale","Note"].map(h=><th key={h} style={{padding:"7px 9px",textAlign:"left",borderBottom:"1px solid #E5E7EB",fontWeight:600,color:"#6B7280"}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {potDocAll.length===0&&<tr><td colSpan={6} style={{padding:16,color:"#9CA3AF",textAlign:"center"}}>Nessun docente con ore di potenziamento segnalate nelle note (es. "9 pot", "12 h pot").</td></tr>}
+            {potDocAll.map(d=>{
+              const tot=calcOre(d);const pot=calcPot(d);const catt=tot-pot;
+              return(
+                <tr key={d.id} style={{borderBottom:"1px solid #F3F4F6"}}>
+                  <td style={{padding:"7px 9px",fontWeight:600,color:"#1B3A6B"}}>{d.nome}</td>
+                  <td style={{padding:"7px 9px",color:"#6B7280"}}>{d.disc}</td>
+                  <td style={{padding:"7px 9px",fontWeight:700}}>{Math.max(0,catt)}h</td>
+                  <td style={{padding:"7px 9px"}}><span style={{background:"#EDE9FE",color:"#6366F1",padding:"2px 8px",borderRadius:9,fontSize:11,fontWeight:700}}>{pot}h</span></td>
+                  <td style={{padding:"7px 9px",fontWeight:700,color:"#1B3A6B"}}>{tot}h</td>
+                  <td style={{padding:"7px 9px",fontSize:11,color:"#6B7280"}}>{d.note||"—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div style={{marginTop:12,padding:"10px 14px",background:"#EDE9FE",borderRadius:7,fontSize:12,color:"#6366F1"}}>
+          💡 Le ore di potenziamento vengono rilevate automaticamente dalle <b>Note</b> del docente (es. <i>"9 pot"</i>, <i>"12 h pot"</i>). Per modificarle, aggiornare il campo Note nella scheda del docente.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── IMPOSTAZIONI ─────────────────────────────────────────────────────────────
+function SettingsView({settings,saveSet,resetData,resetGruppi}){
+  const [loc,setLoc]=useState(settings);
+  function save(){saveSet(loc);alert("✓ Impostazioni salvate");}
+  return(
+    <div style={{maxWidth:600}}>
+      <h2 style={{fontSize:16,fontWeight:700,color:"#1B3A6B",marginBottom:14}}>Impostazioni</h2>
+      <div style={{background:"#fff",borderRadius:8,padding:18,boxShadow:"0 1px 4px rgba(0,0,0,.07)",marginBottom:14}}>
+        <h3 style={{fontSize:14,fontWeight:700,marginBottom:12}}>Ore Cattedra</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {[["Ore standard","oreStd"],["Ore massime (dirigente)","oreMax"],["Ore pot. Isola","orePotIsola"],["Ore pot. Villa","orePotVilla"]].map(([l,k])=>(
+            <div key={k}>
+              <label style={{fontSize:12,color:"#6B7280",display:"block",marginBottom:3}}>{l}</label>
+              <input type="number" value={loc[k]} onChange={e=>setLoc(v=>({...v,[k]:+e.target.value}))} style={{width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid #D1D5DB",fontSize:13}}/>
+            </div>
+          ))}
+        </div>
+        <button onClick={save} style={{marginTop:14,padding:"7px 18px",background:"#1B3A6B",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600}}>Salva</button>
+      </div>
+      <div style={{background:"#FFF5F5",borderRadius:8,padding:18,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <h3 style={{fontSize:14,fontWeight:700,color:"#DC2626",marginBottom:10}}>Zona Pericolosa</h3>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          <button onClick={resetData} style={{padding:"7px 16px",background:"#DC2626",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600}}>Ripristina Docenti</button>
+          <button onClick={resetGruppi} style={{padding:"7px 16px",background:"#D97706",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600}}>Ripristina Gruppi Lingua</button>
+        </div>
+        <p style={{fontSize:11,color:"#9CA3AF",marginTop:8}}>Le modifiche ai docenti e ai gruppi lingua andranno perse.</p>
+      </div>
+    </div>
+  );
+}
+
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  </script>
+</body>
+</html>
